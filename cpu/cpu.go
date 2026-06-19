@@ -2,6 +2,12 @@
 // It handles instruction execution, memory management, registers, and the program counter.
 package cpu
 
+import (
+	"errors"
+	"io"
+	"os"
+)
+
 // font contains the 5x8 bitmap data for hexadecimal characters (0-F).
 // Each character is 5 bytes, stored as 80 bytes total.
 // These are loaded into CPU memory at addresses 0x000-0x04F during initialization.
@@ -25,26 +31,50 @@ var font = [80]uint8{0xF0, 0x90, 0x90, 0x90, 0xF0, //ZERO
 // CPU represents the CHIP-8 processor with its memory, registers, and I/O devices.
 type CPU struct {
 	// Memory is the 4096-byte RAM. Programs start at address 0x200.
-	Memory [4096]uint8
+	memory [4096]uint8
 	// Registers are 16 general-purpose 8-bit registers (V0-VF).
 	// VF is reserved as a flag register for carry/borrow operations.
-	Registers [16]uint8
+	registers [16]uint8
 	// I is the 16-bit index register used for memory operations.
-	I uint16
+	i uint16
 	// PC is the program counter, pointing to the next instruction to execute.
-	PC uint16
+	pc uint16
 	// SP is the stack pointer, indexing into the call stack.
-	SP uint8
+	sp uint8
 	// Stack holds up to 16 return addresses for subroutine calls.
-	Stack [16]uint16
+	stack [16]uint16
 	// DelayTimer is an 8-bit timer that decrements at 60Hz when non-zero.
-	DelayTimer uint8
+	delayTimer uint8
 	// SoundTimer is an 8-bit timer that decrements at 60Hz; produces sound when non-zero.
-	SoundTimer uint8
+	soundTimer uint8
 	// Display is the 64x32 pixel screen (stored as 32 rows of 8-byte width).
-	Display [32][8]uint8
+	display [32][8]uint8
 	// Keypad holds the state of the 16 hexadecimal input keys (0x0-0xF).
-	Keypad [16]bool
+	keypad [16]bool
+}
+
+// loadROM reads a CHIP-8 ROM file and loads its contents into CPU memory starting at address 0x200.
+// This is where CHIP-8 programs are expected to begin execution.
+func (cpu *CPU) LoadROM(filepath string) error {
+	file, err := os.Open(filepath)
+	if err != nil {
+		return errors.New("Couldn't open file.")
+	}
+
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+
+	if err != nil {
+		return errors.New("Couldn't read from file.")
+	}
+
+	if len(content) > 3584 {
+		return errors.New("Rom file is too large")
+	}
+
+	copy(cpu.memory[0x200:], content[0:])
+	return nil
 }
 
 // NewCPU initializes a new CHIP-8 CPU with default values.
@@ -53,8 +83,8 @@ type CPU struct {
 func NewCPU() CPU {
 	var cpu CPU
 	// Load the built-in font data into the reserved memory area.
-	copy(cpu.Memory[0:], font[0:])
+	copy(cpu.memory[0:], font[0:])
 	// Set the program counter to the standard CHIP-8 program start address.
-	cpu.PC = 0x200
+	cpu.pc = 0x200
 	return cpu
 }
