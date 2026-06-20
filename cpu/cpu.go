@@ -77,7 +77,7 @@ func (cpu *CPU) LoadROM(filepath string) error {
 	return nil
 }
 
-func (cpu *CPU) Fetch() (uint16, error) {
+func (cpu *CPU) fetch() (uint16, error) {
 	if cpu.pc >= 0xFFF {
 		return 0, errors.New("Program counter exceeds memory")
 	}
@@ -94,7 +94,7 @@ func (cpu *CPU) Fetch() (uint16, error) {
 // Execute decodes and executes a 16-bit CHIP-8 instruction.
 // Instructions are decoded by examining the first nibble to determine the opcode category,
 // then further decoded using secondary nibbles as needed.
-func (cpu *CPU) Execute(instruction uint16) error {
+func (cpu *CPU) execute(instruction uint16) error {
 	firstNibble := instruction >> 12
 	// secondNibble := (instruction >> 8) & 0x0F
 	// thirdNibble := (instruction >> 4) & 0x0F
