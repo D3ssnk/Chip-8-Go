@@ -73,8 +73,22 @@ func (cpu *CPU) LoadROM(filepath string) error {
 		return errors.New("Rom file is too large")
 	}
 
-	copy(cpu.memory[0x200:], content[0:])
+	copy(cpu.memory[0x200:], content[:])
 	return nil
+}
+
+func (cpu *CPU) Fetch() (uint16, error) {
+	if cpu.pc >= 0xFFF {
+		return 0, errors.New("Program counter exceeds memory")
+	}
+	var instruction uint16
+	instruction = uint16(cpu.memory[cpu.pc])
+	cpu.pc++
+	instruction <<= 8
+	instruction |= uint16(cpu.memory[cpu.pc])
+	cpu.pc++
+
+	return instruction, nil
 }
 
 // NewCPU initializes a new CHIP-8 CPU with default values.
@@ -83,7 +97,7 @@ func (cpu *CPU) LoadROM(filepath string) error {
 func NewCPU() CPU {
 	var cpu CPU
 	// Load the built-in font data into the reserved memory area.
-	copy(cpu.memory[0:], font[0:])
+	copy(cpu.memory[:], font[:])
 	// Set the program counter to the standard CHIP-8 program start address.
 	cpu.pc = 0x200
 	return cpu
