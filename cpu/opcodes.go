@@ -6,7 +6,7 @@ func (cpu *CPU) clear() {
 	cpu.display = [32][8]uint8{}
 }
 
-func (cpu *CPU) ret() error{
+func (cpu *CPU) ret() error {
 	if cpu.sp == 0 {
 		return errors.New("Stack is empty")
 	}
@@ -16,7 +16,7 @@ func (cpu *CPU) ret() error{
 	return nil
 }
 
-func (cpu *CPU) jump(address uint16) error{
+func (cpu *CPU) jump(address uint16) error {
 	if address > 0xFFF {
 		return errors.New("Address is out of bounds")
 	}
@@ -37,7 +37,6 @@ func (cpu *CPU) call(address uint16) error {
 	cpu.pc = address
 	return nil
 }
-
 
 func (cpu *CPU) skipIfEqual(registerIndex uint16, lastByte uint16) error {
 	if registerIndex > 0xF {
@@ -100,8 +99,8 @@ func (cpu *CPU) setRegReg(register1Index uint16, register2Index uint16) error {
 		return errors.New("Invalid Register")
 	}
 
-	cpu.registers[register1Index] = cpu.registers[register2Index] 
-	
+	cpu.registers[register1Index] = cpu.registers[register2Index]
+
 	return nil
 }
 
@@ -110,8 +109,8 @@ func (cpu *CPU) orReg(register1Index uint16, register2Index uint16) error {
 		return errors.New("Invalid Register")
 	}
 
-	cpu.registers[register1Index] = cpu.registers[register2Index] | cpu.registers[register1Index] 
-	
+	cpu.registers[register1Index] = cpu.registers[register2Index] | cpu.registers[register1Index]
+
 	return nil
 }
 
@@ -120,7 +119,22 @@ func (cpu *CPU) andReg(register1Index uint16, register2Index uint16) error {
 		return errors.New("Invalid Register")
 	}
 
-	cpu.registers[register1Index] = cpu.registers[register2Index] & cpu.registers[register1Index] 
-	
+	cpu.registers[register1Index] = cpu.registers[register2Index] & cpu.registers[register1Index]
+
+	return nil
+}
+
+func (cpu *CPU) subReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	if cpu.registers[register1Index] >= cpu.registers[register2Index] {
+		cpu.registers[0xF] = 1
+	} else {
+		cpu.registers[0xF] = 0
+	}
+	cpu.registers[register1Index] = cpu.registers[register1Index] - cpu.registers[register2Index]
+
 	return nil
 }
