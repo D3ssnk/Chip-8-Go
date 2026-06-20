@@ -1575,3 +1575,184 @@ func TestOrRegIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestAndReg verifies that andReg (0x8xy2) correctly performs a bitwise AND
+// between two registers and stores the result in the first register.
+func TestAndReg(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x3)
+	register2 := uint16(0x7)
+
+	cpu.registers[register1] = 0xAF // 1010 1111
+	cpu.registers[register2] = 0xF0 // 1111 0000
+
+	// Execute AND register
+	err := cpu.andReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on andReg, got %v", err)
+	}
+
+	// Verify destination register was set to bitwise AND result
+	expectedValue := uint8(0xA0) // 1010 0000
+	if cpu.registers[register1] != expectedValue {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", register1, expectedValue, cpu.registers[register1])
+	}
+
+	// Verify source register was not modified
+	if cpu.registers[register2] != 0xF0 {
+		t.Errorf("Expected source register[%d] to remain 0xF0, got 0x%X", register2, cpu.registers[register2])
+	}
+}
+
+// TestAndRegInvalidRegister1 verifies that andReg returns an error
+// when the first register index exceeds 0xF.
+func TestAndRegInvalidRegister1(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	validRegister := uint16(0x5)
+
+	err := cpu.andReg(invalidRegister, validRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid first register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestAndRegInvalidRegister2 verifies that andReg returns an error
+// when the second register index exceeds 0xF.
+func TestAndRegInvalidRegister2(t *testing.T) {
+	cpu := NewCPU()
+
+	validRegister := uint16(0x5)
+	invalidRegister := uint16(0x10)
+
+	err := cpu.andReg(validRegister, invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid second register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestAndRegBothInvalid verifies that andReg returns an error
+// when both register indices exceed 0xF.
+func TestAndRegBothInvalid(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidReg1 := uint16(0x10)
+	invalidReg2 := uint16(0x11)
+
+	err := cpu.andReg(invalidReg1, invalidReg2)
+	if err == nil {
+		t.Errorf("Expected error for both invalid registers, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestAndRegEdgeCases verifies andReg works correctly with bitwise edge case values.
+func TestAndRegEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test 0x00 & 0x00 = 0x00
+	cpu.registers[0x0] = 0x00
+	cpu.registers[0x1] = 0x00
+	err := cpu.andReg(0x0, 0x1)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0x00 & 0x00, got %v", err)
+	}
+	if cpu.registers[0x0] != 0x00 {
+		t.Errorf("Expected register[0] to be 0x00, got 0x%X", cpu.registers[0x0])
+	}
+
+	// Test 0xFF & 0x00 = 0x00
+	cpu.registers[0x2] = 0xFF
+	cpu.registers[0x3] = 0x00
+	err = cpu.andReg(0x2, 0x3)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0xFF & 0x00, got %v", err)
+	}
+	if cpu.registers[0x2] != 0x00 {
+		t.Errorf("Expected register[2] to be 0x00, got 0x%X", cpu.registers[0x2])
+	}
+
+	// Test alternating bits: 0xAA & 0x55 = 0x00
+	// 0xAA = 10101010, 0x55 = 01010101
+	cpu.registers[0x4] = 0xAA
+	cpu.registers[0x5] = 0x55
+	err = cpu.andReg(0x4, 0x5)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0xAA & 0x55, got %v", err)
+	}
+	if cpu.registers[0x4] != 0x00 {
+		t.Errorf("Expected register[4] to be 0x00, got 0x%X", cpu.registers[0x4])
+	}
+}
+
+// TestAndRegSameRegister verifies that andReg works when source and destination are the same register.
+func TestAndRegSameRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	value := uint8(0x42)
+	cpu.registers[registerIndex] = value
+
+	err := cpu.andReg(registerIndex, registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error when source and dest are same, got %v", err)
+	}
+
+	// A value AND'd with itself should remain unchanged
+	if cpu.registers[registerIndex] != value {
+		t.Errorf("Expected register[%d] to remain 0x%X, got 0x%X", registerIndex, value, cpu.registers[registerIndex])
+	}
+}
+
+// TestAndRegIsolation verifies that performing an AND operation on one register doesn't affect others.
+func TestAndRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	// Override specific registers for the AND test
+	cpu.registers[3] = 0x0F // 0000 1111
+	cpu.registers[7] = 0x55 // 0101 0101
+
+	err := cpu.andReg(3, 7)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify register 3 was updated (0x0F & 0x55 = 0x05)
+	if cpu.registers[3] != 0x05 {
+		t.Errorf("Expected register[3] to be 0x05, got 0x%X", cpu.registers[3])
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 16; i++ {
+		if i == 3 {
+			continue // Skip the destination register
+		}
+		
+		expectedValue := uint8(i * 10)
+		if i == 7 {
+			expectedValue = 0x55 // Source register maintains its specific value
+		}
+		
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
