@@ -146,3 +146,94 @@ func TestReturnMultiple(t *testing.T) {
 		t.Errorf("Expected error when stack is empty after multiple returns, got none")
 	}
 }
+
+// TestJump verifies that the jump opcode (0x1nnn) correctly sets the program counter
+// to the specified address.
+func TestJump(t *testing.T) {
+	cpu := NewCPU()
+
+	jumpAddress := uint16(0x300)
+
+	// Execute jump opcode
+	err := cpu.jump(jumpAddress)
+	if err != nil {
+		t.Errorf("Expected no error on jump, got %v", err)
+	}
+
+	// Verify PC is set to the jump address
+	if cpu.pc != jumpAddress {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", jumpAddress, cpu.pc)
+	}
+}
+
+// TestJumpOutOfBounds verifies that jump returns an error when the address
+// exceeds the maximum valid memory address (0xFFF).
+func TestJumpOutOfBounds(t *testing.T) {
+	cpu := NewCPU()
+
+	// Try to jump to an out-of-bounds address
+	outOfBoundsAddress := uint16(0x1000)
+
+	err := cpu.jump(outOfBoundsAddress)
+	if err == nil {
+		t.Errorf("Expected error when jumping out of bounds, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Address is out of bounds" {
+		t.Errorf("Expected error message 'Address is out of bounds', got '%v'", err.Error())
+	}
+
+	// Verify PC was not changed
+	if cpu.pc != 0x200 {
+		t.Errorf("Expected PC to remain 0x200, got 0x%X", cpu.pc)
+	}
+}
+
+// TestJumpBoundaryValues verifies jump works with edge case addresses
+// at the boundary of valid memory.
+func TestJumpBoundaryValues(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test jump to minimum valid address (after font data)
+	err := cpu.jump(0x200)
+	if err != nil {
+		t.Errorf("Expected no error jumping to 0x200, got %v", err)
+	}
+	if cpu.pc != 0x200 {
+		t.Errorf("Expected PC to be 0x200, got 0x%X", cpu.pc)
+	}
+
+	// Test jump to maximum valid address
+	err = cpu.jump(0xFFF)
+	if err != nil {
+		t.Errorf("Expected no error jumping to 0xFFF, got %v", err)
+	}
+	if cpu.pc != 0xFFF {
+		t.Errorf("Expected PC to be 0xFFF, got 0x%X", cpu.pc)
+	}
+
+	// Test jump to first address beyond bounds
+	err = cpu.jump(0x1000)
+	if err == nil {
+		t.Errorf("Expected error jumping to 0x1000, got none")
+	}
+}
+
+// TestJumpMultiple verifies that multiple consecutive jumps work correctly.
+func TestJumpMultiple(t *testing.T) {
+	cpu := NewCPU()
+
+	addresses := []uint16{0x200, 0x400, 0x600, 0x800, 0xA00}
+
+	for _, addr := range addresses {
+		err := cpu.jump(addr)
+		if err != nil {
+			t.Errorf("Expected no error jumping to 0x%X, got %v", addr, err)
+		}
+
+		if cpu.pc != addr {
+			t.Errorf("Expected PC to be 0x%X, got 0x%X", addr, cpu.pc)
+		}
+	}
+}

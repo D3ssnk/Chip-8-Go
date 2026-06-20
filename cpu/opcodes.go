@@ -15,3 +15,11 @@ func (cpu *CPU) ret() error{
 	cpu.sp--
 	return nil
 }
+
+func (cpu *CPU) jump(address uint16) error{
+	if address > 0xFFF {
+		return errors.New("Address is out of bounds")
+	}
+	cpu.pc = address
+	return nil
+}
