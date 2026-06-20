@@ -1756,3 +1756,200 @@ func TestAndRegIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestSubRegNoBorrow verifies that subReg (0x8xy5) correctly subtracts Vy from Vx
+// when Vx > Vy, setting VF to 1 (no borrow).
+func TestSubRegNoBorrow(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x3)
+	register2 := uint16(0x7)
+
+	cpu.registers[register1] = 0x10 // 16
+	cpu.registers[register2] = 0x05 // 5
+
+	err := cpu.subReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on subReg, got %v", err)
+	}
+
+	// Verify math result
+	if cpu.registers[register1] != 0x0B { // 11
+		t.Errorf("Expected register[%d] to be 0x0B, got 0x%X", register1, cpu.registers[register1])
+	}
+
+	// Verify VF flag (No borrow = 1)
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF (register[15]) to be 1, got %d", cpu.registers[0xF])
+	}
+
+	// Verify source register unchanged
+	if cpu.registers[register2] != 0x05 {
+		t.Errorf("Expected source register[%d] to remain 0x05, got 0x%X", register2, cpu.registers[register2])
+	}
+}
+
+// TestSubRegBorrow verifies that subReg correctly subtracts Vy from Vx
+// when Vx < Vy, allowing underflow and setting VF to 0 (borrow).
+func TestSubRegBorrow(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x3)
+	register2 := uint16(0x7)
+
+	cpu.registers[register1] = 0x05 // 5
+	cpu.registers[register2] = 0x07 // 7
+
+	err := cpu.subReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on subReg, got %v", err)
+	}
+
+	// Verify underflow math result (5 - 7 = 254 in uint8)
+	expectedValue := uint8(0xFE) 
+	if cpu.registers[register1] != expectedValue {
+		t.Errorf("Expected register[%d] to be 0xFE (underflow), got 0x%X", register1, cpu.registers[register1])
+	}
+
+	// Verify VF flag (Borrow = 0)
+	if cpu.registers[0xF] != 0 {
+		t.Errorf("Expected VF (register[15]) to be 0, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestSubRegEqual verifies subtraction when Vx == Vy, 
+// expecting a result of 0 and VF set to 1 (no borrow).
+func TestSubRegEqual(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x4)
+	register2 := uint16(0x5)
+
+	cpu.registers[register1] = 0x42
+	cpu.registers[register2] = 0x42
+
+	err := cpu.subReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on subReg, got %v", err)
+	}
+
+	if cpu.registers[register1] != 0x00 {
+		t.Errorf("Expected register[%d] to be 0x00, got 0x%X", register1, cpu.registers[register1])
+	}
+
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF to be 1 when values are equal, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestSubRegInvalidRegister1 verifies that subReg returns an error
+// when the first register index exceeds 0xF.
+func TestSubRegInvalidRegister1(t *testing.T) {
+	cpu := NewCPU()
+
+	err := cpu.subReg(0x10, 0x5)
+	if err == nil {
+		t.Errorf("Expected error for invalid first register, got none")
+	}
+}
+
+// TestSubRegInvalidRegister2 verifies that subReg returns an error
+// when the second register index exceeds 0xF.
+func TestSubRegInvalidRegister2(t *testing.T) {
+	cpu := NewCPU()
+
+	err := cpu.subReg(0x5, 0x10)
+	if err == nil {
+		t.Errorf("Expected error for invalid second register, got none")
+	}
+}
+
+// TestSubRegBothInvalid verifies that subReg returns an error
+// when both register indices exceed 0xF.
+func TestSubRegBothInvalid(t *testing.T) {
+	cpu := NewCPU()
+
+	err := cpu.subReg(0x10, 0x11)
+	if err == nil {
+		t.Errorf("Expected error for both invalid registers, got none")
+	}
+}
+
+// TestSubRegSameRegister verifies subtracting a register from itself.
+func TestSubRegSameRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x42
+
+	err := cpu.subReg(registerIndex, registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	if cpu.registers[registerIndex] != 0x00 {
+		t.Errorf("Expected register[%d] to be 0x00, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF to be 1 when subtracting register from itself, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestSubRegWithVFAsDestination verifies the CHIP-8 quirk where if VF (0xF)
+// is the destination register, the math result overwrites the flag calculation.
+func TestSubRegWithVFAsDestination(t *testing.T) {
+	cpu := NewCPU()
+	
+	// Set VF as the destination (Vx)
+	destRegister := uint16(0xF)
+	sourceRegister := uint16(0x2)
+	
+	cpu.registers[destRegister] = 0x10 // 16
+	cpu.registers[sourceRegister] = 0x05 // 5
+	
+	err := cpu.subReg(destRegister, sourceRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	
+	// VF should be overwritten by the mathematical result (0x10 - 0x05 = 0x0B)
+	// rather than storing the 'no borrow' flag of 1.
+	if cpu.registers[0xF] != 0x0B {
+		t.Errorf("Expected VF to be overwritten by math result 0x0B, got 0x%X", cpu.registers[0xF])
+	}
+}
+
+// TestSubRegIsolation verifies that performing a SUB operation
+// on one register doesn't affect others, except for VF.
+func TestSubRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 15; i++ { // Skip F
+		cpu.registers[i] = uint8(i * 10)
+	}
+	cpu.registers[0xF] = 0
+
+	// Override specific registers
+	cpu.registers[3] = 0x20 // 32
+	cpu.registers[7] = 0x10 // 16
+
+	err := cpu.subReg(3, 7)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 15; i++ {
+		if i == 3 || i == 7 {
+			continue 
+		}
+		
+		expectedValue := uint8(i * 10)
+		
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
