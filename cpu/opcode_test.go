@@ -492,3 +492,146 @@ func TestSkipIfEqualMultipleRegisters(t *testing.T) {
 		}
 	}
 }
+
+// TestSkipIfNotEqual verifies that skipIfNotEqual (0x4xkk) correctly skips the next instruction
+// when the register value does NOT equal the given byte value.
+func TestSkipIfNotEqual(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	registerValue := uint16(0x42)
+	compareValue := uint16(0x50)
+
+	// Set register to a different value
+	cpu.registers[registerIndex] = uint8(registerValue)
+	originalPC := cpu.pc
+
+	// Execute skip if not equal
+	err := cpu.skipIfNotEqual(registerIndex, compareValue)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfNotEqual, got %v", err)
+	}
+
+	// Verify PC was incremented by 2 (skip next instruction)
+	expectedPC := originalPC + 2
+	if cpu.pc != expectedPC {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", expectedPC, cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualNoSkip verifies that skipIfNotEqual does NOT skip when values are equal.
+func TestSkipIfNotEqualNoSkip(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x3)
+	value := uint16(0x42)
+
+	// Set register to the same value
+	cpu.registers[registerIndex] = uint8(value)
+	originalPC := cpu.pc
+
+	// Execute skip if not equal with same value
+	err := cpu.skipIfNotEqual(registerIndex, value)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfNotEqual, got %v", err)
+	}
+
+	// Verify PC was NOT incremented
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualInvalidRegister verifies that skipIfNotEqual returns an error
+// when the register index exceeds 0xF.
+func TestSkipIfNotEqualInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	value := uint16(0x42)
+
+	err := cpu.skipIfNotEqual(invalidRegister, value)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+
+	// Verify PC was not changed
+	if cpu.pc != 0x200 {
+		t.Errorf("Expected PC to remain 0x200, got 0x%X", cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualEdgeCases verifies skipIfNotEqual works with edge case values.
+func TestSkipIfNotEqualEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test with value 0x00 (register != 0x00)
+	registerIndex := uint16(0x0)
+	cpu.registers[registerIndex] = 0x01
+	cpu.pc = 0x200
+
+	err := cpu.skipIfNotEqual(registerIndex, 0x00)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	if cpu.pc != 0x202 {
+		t.Errorf("Expected PC to be 0x202, got 0x%X", cpu.pc)
+	}
+
+	// Test with value 0xFF (register != 0xFF)
+	registerIndex = uint16(0xF)
+	cpu.registers[registerIndex] = 0xFE
+	cpu.pc = 0x300
+
+	err = cpu.skipIfNotEqual(registerIndex, 0xFF)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	if cpu.pc != 0x302 {
+		t.Errorf("Expected PC to be 0x302, got 0x%X", cpu.pc)
+	}
+
+	// Test equal values (should NOT skip)
+	cpu.registers[registerIndex] = 0xFF
+	cpu.pc = 0x400
+
+	err = cpu.skipIfNotEqual(registerIndex, 0xFF)
+	if err != nil {
+		t.Errorf("Expected no error when values are equal, got %v", err)
+	}
+	if cpu.pc != 0x400 {
+		t.Errorf("Expected PC to remain 0x400, got 0x%X", cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualMultipleRegisters verifies skipIfNotEqual works correctly with all 16 registers.
+func TestSkipIfNotEqualMultipleRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test all 16 registers
+	for i := 0; i < 16; i++ {
+		registerIndex := uint16(i)
+		registerValue := uint16(0x10 + i)
+		compareValue := uint16(0x20 + i) // Different value
+
+		// Set register to the value
+		cpu.registers[registerIndex] = uint8(registerValue)
+		cpu.pc = 0x200 + uint16(i)*4
+
+		err := cpu.skipIfNotEqual(registerIndex, compareValue)
+		if err != nil {
+			t.Errorf("Register %d: Expected no error, got %v", i, err)
+		}
+
+		// Verify PC was skipped (since values don't match)
+		expectedPC := cpu.pc
+		if expectedPC != 0x202+uint16(i)*4 {
+			t.Errorf("Register %d: Expected PC to be 0x%X, got 0x%X", i, 0x202+uint16(i)*4, expectedPC)
+		}
+	}
+}
