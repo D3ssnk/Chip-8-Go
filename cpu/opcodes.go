@@ -37,3 +37,16 @@ func (cpu *CPU) call(address uint16) error {
 	cpu.pc = address
 	return nil
 }
+
+
+func (cpu *CPU) skipIfEqual(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	if cpu.registers[registerIndex] == uint8(lastByte) {
+		cpu.pc += 2
+	}
+
+	return nil
+}
