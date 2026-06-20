@@ -973,3 +973,424 @@ func TestSetRegSequential(t *testing.T) {
 		}
 	}
 }
+
+// TestAddVal verifies that addVal (0x7xkk) correctly adds a byte value to a register.
+func TestAddVal(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x10
+	valueToAdd := uint16(0x20)
+
+	// Execute add value
+	err := cpu.addVal(registerIndex, valueToAdd)
+	if err != nil {
+		t.Errorf("Expected no error on addVal, got %v", err)
+	}
+
+	// Verify register was incremented correctly
+	expectedValue := uint8(0x10 + 0x20)
+	if cpu.registers[registerIndex] != expectedValue {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", registerIndex, expectedValue, cpu.registers[registerIndex])
+	}
+}
+
+// TestAddValInvalidRegister verifies that addVal returns an error
+// when the register index exceeds 0xF.
+func TestAddValInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	value := uint16(0x42)
+
+	err := cpu.addVal(invalidRegister, value)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestAddValOverflow verifies that addVal handles overflow correctly (wraps around).
+func TestAddValOverflow(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x3)
+
+	// Test overflow: 0xFF + 0x02 = 0x01 (with wrapping)
+	cpu.registers[registerIndex] = 0xFF
+	err := cpu.addVal(registerIndex, 0x02)
+	if err != nil {
+		t.Errorf("Expected no error on overflow, got %v", err)
+	}
+
+	// In Go, uint8 overflow wraps around
+	expectedValue := uint8(0x01)
+	if cpu.registers[registerIndex] != expectedValue {
+		t.Errorf("Expected register[%d] to be 0x%X (wrapped), got 0x%X", registerIndex, expectedValue, cpu.registers[registerIndex])
+	}
+}
+
+// TestAddValZero verifies that adding zero doesn't change the register value.
+func TestAddValZero(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x7)
+	initialValue := uint8(0x42)
+	cpu.registers[registerIndex] = initialValue
+
+	// Add zero
+	err := cpu.addVal(registerIndex, 0x00)
+	if err != nil {
+		t.Errorf("Expected no error when adding zero, got %v", err)
+	}
+
+	// Verify register value unchanged
+	if cpu.registers[registerIndex] != initialValue {
+		t.Errorf("Expected register[%d] to remain 0x%X, got 0x%X", registerIndex, initialValue, cpu.registers[registerIndex])
+	}
+}
+
+// TestAddValEdgeCases verifies addVal works with edge case values.
+func TestAddValEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test adding to a zero register
+	registerIndex := uint16(0x0)
+	cpu.registers[registerIndex] = 0x00
+	err := cpu.addVal(registerIndex, 0xFF)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	if cpu.registers[registerIndex] != 0xFF {
+		t.Errorf("Expected register[0] to be 0xFF, got 0x%X", cpu.registers[registerIndex])
+	}
+
+	// Test adding max value to max value (overflow)
+	registerIndex = uint16(0xF)
+	cpu.registers[registerIndex] = 0xFF
+	err = cpu.addVal(registerIndex, 0xFF)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	expectedValue := uint8(0xFE) // 0xFF + 0xFF wraps to 0xFE
+	if cpu.registers[registerIndex] != expectedValue {
+		t.Errorf("Expected register[15] to be 0x%X, got 0x%X", expectedValue, cpu.registers[registerIndex])
+	}
+}
+
+// TestAddValAllRegisters verifies addVal works correctly with all 16 registers.
+func TestAddValAllRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	// Add different values to each register
+	for i := 0; i < 16; i++ {
+		registerIndex := uint16(i)
+		baseValue := uint16(0x10 + i)
+		addValue := uint16(0x20)
+
+		cpu.registers[registerIndex] = uint8(baseValue)
+
+		err := cpu.addVal(registerIndex, addValue)
+		if err != nil {
+			t.Errorf("Register %d: Expected no error, got %v", i, err)
+		}
+
+		// Verify register was incremented correctly
+		expectedValue := uint8(baseValue + addValue)
+		if cpu.registers[registerIndex] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[registerIndex])
+		}
+	}
+}
+
+// TestAddValSequential verifies that multiple additions accumulate correctly.
+func TestAddValSequential(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x4)
+	cpu.registers[registerIndex] = 0x10
+
+	// Add values sequentially
+	addValues := []uint16{0x05, 0x10, 0x20, 0x30}
+	expectedResult := uint8(0x10)
+
+	for i, val := range addValues {
+		err := cpu.addVal(registerIndex, val)
+		if err != nil {
+			t.Errorf("Addition %d: Expected no error, got %v", i, err)
+		}
+
+		expectedResult += uint8(val)
+		if cpu.registers[registerIndex] != expectedResult {
+			t.Errorf("Addition %d: Expected 0x%X, got 0x%X", i, expectedResult, cpu.registers[registerIndex])
+		}
+	}
+}
+
+// TestAddValMultipleRegisters verifies that addVal correctly updates individual registers
+// without affecting others.
+func TestAddValMultipleRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	// Add to register 5
+	err := cpu.addVal(5, 0x50)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify register 5 was updated
+	expectedValue5 := uint8(5*10 + 0x50)
+	if cpu.registers[5] != expectedValue5 {
+		t.Errorf("Expected register[5] to be 0x%X, got 0x%X", expectedValue5, cpu.registers[5])
+	}
+
+	// Verify other registers remain unchanged
+	for i := 0; i < 16; i++ {
+		if i == 5 {
+			continue // Skip the one we modified
+		}
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
+
+// TestSetRegReg verifies that setRegReg (0x8xy0) correctly copies a value
+// from one register to another.
+func TestSetRegReg(t *testing.T) {
+	cpu := NewCPU()
+
+	sourceRegister := uint16(0x3)
+	destRegister := uint16(0x7)
+
+	cpu.registers[sourceRegister] = 0x42
+	cpu.registers[destRegister] = 0x00
+
+	// Execute set register from register
+	err := cpu.setRegReg(destRegister, sourceRegister)
+	if err != nil {
+		t.Errorf("Expected no error on setRegReg, got %v", err)
+	}
+
+	// Verify destination register was set to source value
+	if cpu.registers[destRegister] != cpu.registers[sourceRegister] {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", destRegister, cpu.registers[sourceRegister], cpu.registers[destRegister])
+	}
+
+	// Verify source register was not modified
+	if cpu.registers[sourceRegister] != 0x42 {
+		t.Errorf("Expected source register[%d] to remain 0x42, got 0x%X", sourceRegister, cpu.registers[sourceRegister])
+	}
+}
+
+// TestSetRegRegInvalidRegister1 verifies that setRegReg returns an error
+// when the destination register index exceeds 0xF.
+func TestSetRegRegInvalidRegister1(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	sourceRegister := uint16(0x5)
+
+	cpu.registers[sourceRegister] = 0x42
+
+	err := cpu.setRegReg(invalidRegister, sourceRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid destination register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetRegRegInvalidRegister2 verifies that setRegReg returns an error
+// when the source register index exceeds 0xF.
+func TestSetRegRegInvalidRegister2(t *testing.T) {
+	cpu := NewCPU()
+
+	destRegister := uint16(0x5)
+	invalidRegister := uint16(0x10)
+
+	err := cpu.setRegReg(destRegister, invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid source register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetRegRegBothInvalid verifies that setRegReg returns an error
+// when both register indices exceed 0xF.
+func TestSetRegRegBothInvalid(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidReg1 := uint16(0x10)
+	invalidReg2 := uint16(0x11)
+
+	err := cpu.setRegReg(invalidReg1, invalidReg2)
+	if err == nil {
+		t.Errorf("Expected error for both invalid registers, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetRegRegEdgeCases verifies setRegReg works with edge case values.
+func TestSetRegRegEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test copying 0x00
+	cpu.registers[0x0] = 0x00
+	cpu.registers[0x1] = 0xFF
+	err := cpu.setRegReg(0x1, 0x0)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	if cpu.registers[0x1] != 0x00 {
+		t.Errorf("Expected register[1] to be 0x00, got 0x%X", cpu.registers[0x1])
+	}
+
+	// Test copying 0xFF
+	cpu.registers[0xE] = 0xFF
+	cpu.registers[0xF] = 0x00
+	err = cpu.setRegReg(0xF, 0xE)
+	if err != nil {
+		t.Errorf("Expected no error for edge case, got %v", err)
+	}
+	if cpu.registers[0xF] != 0xFF {
+		t.Errorf("Expected register[15] to be 0xFF, got 0x%X", cpu.registers[0xF])
+	}
+}
+
+// TestSetRegRegAllRegisters verifies setRegReg works correctly with all register pairs.
+func TestSetRegRegAllRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 17) // Use 17 to create distinct values
+	}
+
+	// Test copying from each register to every other register
+	for src := 0; src < 16; src++ {
+		for dst := 0; dst < 16; dst++ {
+			originalDestValue := cpu.registers[dst]
+			sourceValue := cpu.registers[src]
+
+			err := cpu.setRegReg(uint16(dst), uint16(src))
+			if err != nil {
+				t.Errorf("Copy src[%d] to dst[%d]: Expected no error, got %v", src, dst, err)
+			}
+
+			// Verify destination was updated to source value
+			if cpu.registers[dst] != sourceValue {
+				t.Errorf("Copy src[%d] to dst[%d]: Expected 0x%X, got 0x%X", src, dst, sourceValue, cpu.registers[dst])
+			}
+
+			// Verify source register was not modified
+			if cpu.registers[src] != sourceValue {
+				t.Errorf("Copy src[%d] to dst[%d]: Source register was modified to 0x%X", src, dst, cpu.registers[src])
+			}
+
+			// Restore destination for next test
+			cpu.registers[dst] = originalDestValue
+		}
+	}
+}
+
+// TestSetRegRegSameRegister verifies that setRegReg works when source and destination are the same register.
+func TestSetRegRegSameRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x42
+
+	err := cpu.setRegReg(registerIndex, registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error when source and dest are same, got %v", err)
+	}
+
+	// Register value should remain unchanged
+	if cpu.registers[registerIndex] != 0x42 {
+		t.Errorf("Expected register[%d] to remain 0x42, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+}
+
+// TestSetRegRegIsolation verifies that copying to one register doesn't affect other registers.
+func TestSetRegRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	// Copy register 3 to register 7
+	sourceValue := cpu.registers[3]
+	err := cpu.setRegReg(7, 3)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify register 7 was updated
+	if cpu.registers[7] != sourceValue {
+		t.Errorf("Expected register[7] to be 0x%X, got 0x%X", sourceValue, cpu.registers[7])
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 16; i++ {
+		if i == 7 {
+			continue // Skip the one we modified
+		}
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
+
+// TestSetRegRegSequential verifies that multiple copy operations work correctly in sequence.
+func TestSetRegRegSequential(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.registers[0] = 0x11
+	cpu.registers[1] = 0x22
+	cpu.registers[2] = 0x33
+
+	// Copy 0 to 5
+	err := cpu.setRegReg(5, 0)
+	if err != nil || cpu.registers[5] != 0x11 {
+		t.Errorf("First copy failed: expected 0x11, got 0x%X", cpu.registers[5])
+	}
+
+	// Copy 1 to 6
+	err = cpu.setRegReg(6, 1)
+	if err != nil || cpu.registers[6] != 0x22 {
+		t.Errorf("Second copy failed: expected 0x22, got 0x%X", cpu.registers[6])
+	}
+
+	// Copy 2 to 7
+	err = cpu.setRegReg(7, 2)
+	if err != nil || cpu.registers[7] != 0x33 {
+		t.Errorf("Third copy failed: expected 0x33, got 0x%X", cpu.registers[7])
+	}
+
+	// Verify original values unchanged
+	if cpu.registers[0] != 0x11 || cpu.registers[1] != 0x22 || cpu.registers[2] != 0x33 {
+		t.Errorf("Original registers were modified during sequential copies")
+	}
+}

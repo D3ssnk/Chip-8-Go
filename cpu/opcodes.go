@@ -84,3 +84,23 @@ func (cpu *CPU) setReg(registerIndex uint16, lastByte uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) addVal(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.registers[registerIndex] += uint8(lastByte)
+
+	return nil
+}
+
+func (cpu *CPU) setRegReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.registers[register1Index] = cpu.registers[register2Index] 
+	
+	return nil
+}
