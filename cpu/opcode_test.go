@@ -237,3 +237,128 @@ func TestJumpMultiple(t *testing.T) {
 		}
 	}
 }
+
+// TestCall verifies that the call opcode (0x2nnn) correctly pushes the current PC
+// onto the stack and sets PC to the subroutine address.
+func TestCall(t *testing.T) {
+	cpu := NewCPU()
+
+	callAddress := uint16(0x400)
+	originalPC := cpu.pc
+
+	// Execute call opcode
+	err := cpu.call(callAddress)
+	if err != nil {
+		t.Errorf("Expected no error on call, got %v", err)
+	}
+
+	// Verify PC is set to the call address
+	if cpu.pc != callAddress {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", callAddress, cpu.pc)
+	}
+
+	// Verify stack pointer was incremented
+	if cpu.sp != 1 {
+		t.Errorf("Expected SP to be 1, got %d", cpu.sp)
+	}
+
+	// Verify return address was pushed onto stack
+	if cpu.stack[1] != originalPC {
+		t.Errorf("Expected stack[1] to be 0x%X, got 0x%X", originalPC, cpu.stack[1])
+	}
+}
+
+// TestCallOutOfBounds verifies that call returns an error when the address
+// exceeds the maximum valid memory address (0xFFF).
+func TestCallOutOfBounds(t *testing.T) {
+	cpu := NewCPU()
+
+	outOfBoundsAddress := uint16(0x1000)
+
+	err := cpu.call(outOfBoundsAddress)
+	if err == nil {
+		t.Errorf("Expected error when calling out of bounds, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Address is out of bounds" {
+		t.Errorf("Expected error message 'Address is out of bounds', got '%v'", err.Error())
+	}
+
+	// Verify PC and SP were not changed
+	if cpu.pc != 0x200 {
+		t.Errorf("Expected PC to remain 0x200, got 0x%X", cpu.pc)
+	}
+	if cpu.sp != 0 {
+		t.Errorf("Expected SP to remain 0, got %d", cpu.sp)
+	}
+}
+
+// TestCallStackFull verifies that call returns an error when the stack is full (SP == 0xF).
+func TestCallStackFull(t *testing.T) {
+	cpu := NewCPU()
+
+	// Fill the stack to capacity
+	cpu.sp = 0xF
+
+	callAddress := uint16(0x400)
+
+	err := cpu.call(callAddress)
+	if err == nil {
+		t.Errorf("Expected error when stack is full, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Stack is full" {
+		t.Errorf("Expected error message 'Stack is full', got '%v'", err.Error())
+	}
+
+	// Verify PC and SP were not changed
+	if cpu.pc != 0x200 {
+		t.Errorf("Expected PC to remain 0x200, got 0x%X", cpu.pc)
+	}
+	if cpu.sp != 0xF {
+		t.Errorf("Expected SP to remain 0xF, got %d", cpu.sp)
+	}
+}
+
+// TestCallMultiple verifies that multiple consecutive calls properly manage the stack
+// and can be correctly unwound using return operations.
+func TestCallMultiple(t *testing.T) {
+	cpu := NewCPU()
+
+	callAddresses := []uint16{0x300, 0x400, 0x500, 0x600}
+
+	// Perform multiple calls
+	for i, addr := range callAddresses {
+		err := cpu.call(addr)
+		if err != nil {
+			t.Errorf("Call %d: Expected no error, got %v", i, err)
+		}
+
+		// Verify PC is set to call address
+		if cpu.pc != addr {
+			t.Errorf("Call %d: Expected PC to be 0x%X, got 0x%X", i, addr, cpu.pc)
+		}
+
+		// Verify stack pointer is correct
+		expectedSP := uint8(i + 1)
+		if cpu.sp != expectedSP {
+			t.Errorf("Call %d: Expected SP to be %d, got %d", i, expectedSP, cpu.sp)
+		}
+	}
+
+	// Verify we can unwind the stack with returns
+	for i := len(callAddresses) - 1; i >= 0; i-- {
+		err := cpu.ret()
+		if err != nil {
+			t.Errorf("Return %d: Expected no error, got %v", i, err)
+		}
+
+		// For each return, verify we get back the original PC
+		// (which would have been updated by previous calls)
+		if cpu.sp != uint8(i) {
+			t.Errorf("Return %d: Expected SP to be %d, got %d", i, i, cpu.sp)
+		}
+	}
+}
