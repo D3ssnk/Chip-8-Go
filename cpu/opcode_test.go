@@ -1394,3 +1394,184 @@ func TestSetRegRegSequential(t *testing.T) {
 		t.Errorf("Original registers were modified during sequential copies")
 	}
 }
+
+// TestOrReg verifies that orReg (0x8xy1) correctly performs a bitwise OR
+// between two registers and stores the result in the first register.
+func TestOrReg(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x3)
+	register2 := uint16(0x7)
+
+	cpu.registers[register1] = 0x0F // 0000 1111
+	cpu.registers[register2] = 0xF0 // 1111 0000
+
+	// Execute OR register
+	err := cpu.orReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on orReg, got %v", err)
+	}
+
+	// Verify destination register was set to bitwise OR result
+	expectedValue := uint8(0xFF) // 1111 1111
+	if cpu.registers[register1] != expectedValue {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", register1, expectedValue, cpu.registers[register1])
+	}
+
+	// Verify source register was not modified
+	if cpu.registers[register2] != 0xF0 {
+		t.Errorf("Expected source register[%d] to remain 0xF0, got 0x%X", register2, cpu.registers[register2])
+	}
+}
+
+// TestOrRegInvalidRegister1 verifies that orReg returns an error
+// when the first register index exceeds 0xF.
+func TestOrRegInvalidRegister1(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	validRegister := uint16(0x5)
+
+	err := cpu.orReg(invalidRegister, validRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid first register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestOrRegInvalidRegister2 verifies that orReg returns an error
+// when the second register index exceeds 0xF.
+func TestOrRegInvalidRegister2(t *testing.T) {
+	cpu := NewCPU()
+
+	validRegister := uint16(0x5)
+	invalidRegister := uint16(0x10)
+
+	err := cpu.orReg(validRegister, invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid second register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestOrRegBothInvalid verifies that orReg returns an error
+// when both register indices exceed 0xF.
+func TestOrRegBothInvalid(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidReg1 := uint16(0x10)
+	invalidReg2 := uint16(0x11)
+
+	err := cpu.orReg(invalidReg1, invalidReg2)
+	if err == nil {
+		t.Errorf("Expected error for both invalid registers, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestOrRegEdgeCases verifies orReg works correctly with bitwise edge case values.
+func TestOrRegEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test 0x00 | 0x00 = 0x00
+	cpu.registers[0x0] = 0x00
+	cpu.registers[0x1] = 0x00
+	err := cpu.orReg(0x0, 0x1)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0x00 | 0x00, got %v", err)
+	}
+	if cpu.registers[0x0] != 0x00 {
+		t.Errorf("Expected register[0] to be 0x00, got 0x%X", cpu.registers[0x0])
+	}
+
+	// Test 0xFF | 0x00 = 0xFF
+	cpu.registers[0x2] = 0xFF
+	cpu.registers[0x3] = 0x00
+	err = cpu.orReg(0x2, 0x3)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0xFF | 0x00, got %v", err)
+	}
+	if cpu.registers[0x2] != 0xFF {
+		t.Errorf("Expected register[2] to be 0xFF, got 0x%X", cpu.registers[0x2])
+	}
+
+	// Test alternating bits: 0xAA | 0x55 = 0xFF
+	// 0xAA = 10101010, 0x55 = 01010101
+	cpu.registers[0x4] = 0xAA
+	cpu.registers[0x5] = 0x55
+	err = cpu.orReg(0x4, 0x5)
+	if err != nil {
+		t.Errorf("Expected no error for edge case 0xAA | 0x55, got %v", err)
+	}
+	if cpu.registers[0x4] != 0xFF {
+		t.Errorf("Expected register[4] to be 0xFF, got 0x%X", cpu.registers[0x4])
+	}
+}
+
+// TestOrRegSameRegister verifies that orReg works when source and destination are the same register.
+func TestOrRegSameRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	value := uint8(0x42)
+	cpu.registers[registerIndex] = value
+
+	err := cpu.orReg(registerIndex, registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error when source and dest are same, got %v", err)
+	}
+
+	// A value OR'd with itself should remain unchanged
+	if cpu.registers[registerIndex] != value {
+		t.Errorf("Expected register[%d] to remain 0x%X, got 0x%X", registerIndex, value, cpu.registers[registerIndex])
+	}
+}
+
+// TestOrRegIsolation verifies that performing an OR operation on one register doesn't affect others.
+func TestOrRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	// Override specific registers for the OR test
+	cpu.registers[3] = 0x01 // 0000 0001
+	cpu.registers[7] = 0x02 // 0000 0010
+
+	err := cpu.orReg(3, 7)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify register 3 was updated (0x01 | 0x02 = 0x03)
+	if cpu.registers[3] != 0x03 {
+		t.Errorf("Expected register[3] to be 0x03, got 0x%X", cpu.registers[3])
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 16; i++ {
+		if i == 3 {
+			continue // Skip the destination register
+		}
+		
+		expectedValue := uint8(i * 10)
+		if i == 7 {
+			expectedValue = 0x02 // Source register maintains its specific value
+		}
+		
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}

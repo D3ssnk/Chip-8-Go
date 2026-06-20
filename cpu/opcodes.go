@@ -104,3 +104,13 @@ func (cpu *CPU) setRegReg(register1Index uint16, register2Index uint16) error {
 	
 	return nil
 }
+
+func (cpu *CPU) orReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.registers[register1Index] = cpu.registers[register2Index] | cpu.registers[register1Index] 
+	
+	return nil
+}
