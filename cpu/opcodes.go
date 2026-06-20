@@ -50,3 +50,15 @@ func (cpu *CPU) skipIfEqual(registerIndex uint16, lastByte uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) skipIfNotEqual(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	if cpu.registers[registerIndex] != uint8(lastByte) {
+		cpu.pc += 2
+	}
+
+	return nil
+}
