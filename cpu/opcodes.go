@@ -173,3 +173,19 @@ func (cpu *CPU) subRegReverse(register1Index uint16, register2Index uint16) erro
 
 	return nil
 }
+
+func (cpu *CPU) shiftLeft(register1Index uint16) error {
+	if register1Index  > 0xF {
+		return errors.New("Invalid Register")
+	}
+	register1Value := cpu.registers[register1Index]
+
+	if register1Value >> 7 == 0x01 {
+		cpu.registers[0xF] = 1
+	} else {
+		cpu.registers[0xF] = 0
+	}
+	cpu.registers[register1Index] = register1Value << 1
+
+	return nil
+}

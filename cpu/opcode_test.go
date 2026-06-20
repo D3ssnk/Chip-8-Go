@@ -2273,3 +2273,120 @@ func TestSubRegReverseIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestShiftLeftMSBOne verifies that shiftLeft (0x8xyE) correctly shifts Vx left by 1
+// and sets VF to 1 when the most significant bit of Vx is 1.
+func TestShiftLeftMSBOne(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x85 // 133 (Binary: 1000 0101)
+
+	err := cpu.shiftLeft(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on shiftLeft, got %v", err)
+	}
+
+	// Verify shifted result (1000 0101 << 1 = 0000 1010 = 0x0A)
+	if cpu.registers[registerIndex] != 0x0A {
+		t.Errorf("Expected register[%d] to be 0x0A, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+
+	// Verify VF flag (MSB was 1)
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF (register[15]) to be 1, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestShiftLeftMSBZero verifies that shiftLeft correctly shifts Vx left by 1
+// and sets VF to 0 when the most significant bit of Vx is 0.
+func TestShiftLeftMSBZero(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x45 // 69 (Binary: 0100 0101)
+
+	err := cpu.shiftLeft(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on shiftLeft, got %v", err)
+	}
+
+	// Verify shifted result (0100 0101 << 1 = 1000 1010 = 0x8A)
+	if cpu.registers[registerIndex] != 0x8A {
+		t.Errorf("Expected register[%d] to be 0x8A, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+
+	// Verify VF flag (MSB was 0)
+	if cpu.registers[0xF] != 0 {
+		t.Errorf("Expected VF (register[15]) to be 0, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestShiftLeftInvalidRegister verifies that shiftLeft returns an error
+// when the register index exceeds 0xF.
+func TestShiftLeftInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	err := cpu.shiftLeft(0x10)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+	
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestShiftLeftWithVFAsDestination verifies that if VF (0xF) is the target register,
+// the mathematical shifted result overwrites the MSB flag calculation.
+func TestShiftLeftWithVFAsDestination(t *testing.T) {
+	cpu := NewCPU()
+	
+	destRegister := uint16(0xF)
+	cpu.registers[destRegister] = 0x82 // Binary: 1000 0010 (MSB is 1)
+	
+	err := cpu.shiftLeft(destRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+	
+	// VF should first be set to 1 (the MSB), but then immediately overwritten
+	// by the shifted result (0x82 << 1 = 0x04).
+	if cpu.registers[0xF] != 0x04 { 
+		t.Errorf("Expected VF to be overwritten by math result 0x04, got 0x%X", cpu.registers[0xF])
+	}
+}
+
+// TestShiftLeftIsolation verifies that performing a shift operation
+// on one register doesn't affect others, except for VF.
+func TestShiftLeftIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 15; i++ { // Skip F
+		cpu.registers[i] = uint8(i * 10)
+	}
+	cpu.registers[0xF] = 0
+
+	// Override a specific register
+	targetRegister := uint16(3)
+	cpu.registers[targetRegister] = 0x10 // 0001 0000
+
+	err := cpu.shiftLeft(targetRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 15; i++ {
+		if i == int(targetRegister) {
+			continue 
+		}
+		
+		expectedValue := uint8(i * 10)
+		
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
