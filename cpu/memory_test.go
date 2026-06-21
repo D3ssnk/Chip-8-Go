@@ -280,3 +280,98 @@ func TestSetIToFontIsolation(t *testing.T) {
 		t.Errorf("Expected register[%d] to remain 0x%X, got 0x%X", registerIndex, fontChar, cpu.registers[registerIndex])
 	}
 }
+
+// TestStoreBCD verifies that storeBCD (0xFx33) correctly extracts the hundreds,
+// tens, and units digits of a register and stores them in sequential memory.
+func TestStoreBCD(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.i = uint16(0x300)
+	registerIndex := uint16(0x5)
+	
+	// 234 -> Hundreds: 2, Tens: 3, Units: 4
+	cpu.registers[registerIndex] = 234 
+
+	err := cpu.storeBCD(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on storeBCD, got %v", err)
+	}
+
+	// Verify memory locations
+	if cpu.memory[cpu.i] != 2 {
+		t.Errorf("Expected hundreds digit to be 2, got %d", cpu.memory[cpu.i])
+	}
+	if cpu.memory[cpu.i+1] != 3 {
+		t.Errorf("Expected tens digit to be 3, got %d", cpu.memory[cpu.i+1])
+	}
+	if cpu.memory[cpu.i+2] != 4 {
+		t.Errorf("Expected units digit to be 4, got %d", cpu.memory[cpu.i+2])
+	}
+}
+
+// TestStoreBCDEdgeCases verifies storeBCD correctly handles the minimum (0)
+// and maximum (255) possible values of an 8-bit register.
+func TestStoreBCDEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+	registerIndex := uint16(0x2)
+	cpu.i = uint16(0x400)
+
+	// Test absolute minimum: 0
+	cpu.registers[registerIndex] = 0
+	err := cpu.storeBCD(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error for BCD 0, got %v", err)
+	}
+	if cpu.memory[cpu.i] != 0 || cpu.memory[cpu.i+1] != 0 || cpu.memory[cpu.i+2] != 0 {
+		t.Errorf("Expected memory to hold [0, 0, 0], got [%d, %d, %d]", 
+			cpu.memory[cpu.i], cpu.memory[cpu.i+1], cpu.memory[cpu.i+2])
+	}
+
+	// Test absolute maximum: 255
+	cpu.registers[registerIndex] = 255
+	err = cpu.storeBCD(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error for BCD 255, got %v", err)
+	}
+	if cpu.memory[cpu.i] != 2 || cpu.memory[cpu.i+1] != 5 || cpu.memory[cpu.i+2] != 5 {
+		t.Errorf("Expected memory to hold [2, 5, 5], got [%d, %d, %d]", 
+			cpu.memory[cpu.i], cpu.memory[cpu.i+1], cpu.memory[cpu.i+2])
+	}
+}
+
+// TestStoreBCDInvalidRegister verifies that storeBCD returns an error
+// when the register index exceeds 0xF.
+func TestStoreBCDInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.storeBCD(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestStoreBCDOutOfBoundsMemory verifies that storeBCD returns an error
+// when attempting to write BCD values past the maximum memory boundary (0xFFF).
+func TestStoreBCDOutOfBoundsMemory(t *testing.T) {
+	cpu := NewCPU()
+	registerIndex := uint16(0x0)
+	cpu.registers[registerIndex] = 123
+	
+	// Position I so that I+2 equals 0x1000 (which is out of bounds)
+	cpu.i = uint16(0xFFE) 
+
+	err := cpu.storeBCD(registerIndex)
+	if err == nil {
+		t.Errorf("Expected error for out of bounds memory write, got none")
+	}
+
+	if err.Error() != "Address out of bounds" {
+		t.Errorf("Expected error message 'Address out of bounds', got '%v'", err.Error())
+	}
+}
