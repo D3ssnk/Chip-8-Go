@@ -315,3 +315,13 @@ func (cpu *CPU) setDelayTimer(registerIndex uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) setSoundTimer(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.soundTimer = cpu.registers[registerIndex] 
+
+	return nil
+}

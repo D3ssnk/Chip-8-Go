@@ -1916,3 +1916,95 @@ func TestSetDelayTimerIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestSetSoundTimer verifies that setSoundTimer (0xFx18) correctly sets
+// the system sound timer to the value stored in the specified register.
+func TestSetSoundTimer(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	expectedTimerValue := uint8(0x3C) // 60
+
+	// Set the register to the value we want the timer to become
+	cpu.registers[registerIndex] = expectedTimerValue
+
+	err := cpu.setSoundTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on setSoundTimer, got %v", err)
+	}
+
+	// Verify the sound timer was updated with the register's value
+	if cpu.soundTimer != expectedTimerValue {
+		t.Errorf("Expected soundTimer to be 0x%X, got 0x%X", expectedTimerValue, cpu.soundTimer)
+	}
+}
+
+// TestSetSoundTimerZero verifies that setSoundTimer works correctly
+// when setting the sound timer to 0.
+func TestSetSoundTimerZero(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x2)
+	cpu.registers[registerIndex] = 0x00
+	
+	// Pre-set timer to non-zero to ensure it actually changes
+	cpu.soundTimer = 0x42 
+
+	err := cpu.setSoundTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on setSoundTimer, got %v", err)
+	}
+
+	if cpu.soundTimer != 0x00 {
+		t.Errorf("Expected soundTimer to be 0x00, got 0x%X", cpu.soundTimer)
+	}
+}
+
+// TestSetSoundTimerInvalidRegister verifies that setSoundTimer returns an error
+// when the register index exceeds 0xF.
+func TestSetSoundTimerInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.setSoundTimer(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetSoundTimerIsolation verifies that setting the sound timer
+// does not accidentally mutate the source register or any other registers.
+func TestSetSoundTimerIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	targetRegister := uint16(0x7)
+	expectedTimerValue := cpu.registers[targetRegister]
+
+	err := cpu.setSoundTimer(targetRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify sound timer was updated
+	if cpu.soundTimer != expectedTimerValue {
+		t.Errorf("Expected soundTimer to be 0x%X, got 0x%X", expectedTimerValue, cpu.soundTimer)
+	}
+
+	// Verify all registers remain completely unchanged
+	for i := 0; i < 16; i++ {
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
