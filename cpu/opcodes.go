@@ -1,6 +1,9 @@
 package cpu
 
-import "errors"
+import (
+	"errors"
+	"math/rand/v2"
+)
 
 func (cpu *CPU) clear() {
 	cpu.display = [32][64]bool{}
@@ -243,6 +246,12 @@ func (cpu *CPU) draw(xcord uint16, ycord uint16, counter uint16) error {
 			}
 		}
 	}
+func (cpu *CPU) randReg(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	randVal := rand.IntN(256)
+	cpu.registers[registerIndex] = (uint8(lastByte) & uint8(randVal))
 
 	return nil
 }
