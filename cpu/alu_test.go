@@ -1824,3 +1824,95 @@ func TestWaitForKeyPressIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestSetDelayTimer verifies that setDelayTimer (0xFx15) correctly sets
+// the system delay timer to the value stored in the specified register.
+func TestSetDelayTimer(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	expectedTimerValue := uint8(0x3C) // 60
+
+	// Set the register to the value we want the timer to become
+	cpu.registers[registerIndex] = expectedTimerValue
+
+	err := cpu.setDelayTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on setDelayTimer, got %v", err)
+	}
+
+	// Verify the delay timer was updated with the register's value
+	if cpu.delayTimer != expectedTimerValue {
+		t.Errorf("Expected delayTimer to be 0x%X, got 0x%X", expectedTimerValue, cpu.delayTimer)
+	}
+}
+
+// TestSetDelayTimerZero verifies that setDelayTimer works correctly
+// when setting the delay timer to 0.
+func TestSetDelayTimerZero(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x2)
+	cpu.registers[registerIndex] = 0x00
+	
+	// Pre-set timer to non-zero to ensure it actually changes
+	cpu.delayTimer = 0x42 
+
+	err := cpu.setDelayTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on setDelayTimer, got %v", err)
+	}
+
+	if cpu.delayTimer != 0x00 {
+		t.Errorf("Expected delayTimer to be 0x00, got 0x%X", cpu.delayTimer)
+	}
+}
+
+// TestSetDelayTimerInvalidRegister verifies that setDelayTimer returns an error
+// when the register index exceeds 0xF.
+func TestSetDelayTimerInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.setDelayTimer(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetDelayTimerIsolation verifies that setting the delay timer
+// does not accidentally mutate the source register or any other registers.
+func TestSetDelayTimerIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	targetRegister := uint16(0x7)
+	expectedTimerValue := cpu.registers[targetRegister]
+
+	err := cpu.setDelayTimer(targetRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify delay timer was updated
+	if cpu.delayTimer != expectedTimerValue {
+		t.Errorf("Expected delayTimer to be 0x%X, got 0x%X", expectedTimerValue, cpu.delayTimer)
+	}
+
+	// Verify all registers remain completely unchanged
+	for i := 0; i < 16; i++ {
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}

@@ -305,3 +305,13 @@ func (cpu *CPU) waitForKeyPress(registerIndex uint16,key uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) setDelayTimer(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.delayTimer = cpu.registers[registerIndex] 
+
+	return nil
+}
