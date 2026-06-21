@@ -189,3 +189,14 @@ func (cpu *CPU) shiftLeft(register1Index uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) setI(address uint16) error {
+	if address > 0xFFF {
+		return errors.New("Address is out of bounds")
+	}
+
+	cpu.i = address
+
+	return nil
+}
+
