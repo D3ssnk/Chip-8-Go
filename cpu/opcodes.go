@@ -270,3 +270,15 @@ func (cpu *CPU) skipIfKeyPressed(key uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) skipIfKeyNotPressed(key uint16) error {
+	if key > 0xF {
+		return errors.New("Key press is out of bounds")
+	}
+
+	if !cpu.keypad[key] {
+		cpu.pc += 2
+	}
+
+	return nil
+}

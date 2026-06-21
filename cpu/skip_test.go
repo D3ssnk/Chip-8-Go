@@ -696,3 +696,97 @@ func TestSkipIfKeyPressedIsolation(t *testing.T) {
 		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
 	}
 }
+
+// TestSkipIfKeyNotPressedSkip verifies that skipIfKeyNotPressed (0xExA1) correctly skips
+// the next instruction when the specified key is NOT currently pressed.
+func TestSkipIfKeyNotPressedSkip(t *testing.T) {
+	cpu := NewCPU()
+
+	keyIndex := uint16(0xA)
+	
+	// Ensure the key is NOT pressed
+	cpu.keypad[keyIndex] = false
+	
+	originalPC := cpu.pc
+
+	err := cpu.skipIfKeyNotPressed(keyIndex)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfKeyNotPressed, got %v", err)
+	}
+
+	// Verify PC was incremented by 2 (skip next instruction)
+	expectedPC := originalPC + 2
+	if cpu.pc != expectedPC {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", expectedPC, cpu.pc)
+	}
+}
+
+// TestSkipIfKeyNotPressedNoSkip verifies that skipIfKeyNotPressed does NOT skip
+// when the specified key IS pressed.
+func TestSkipIfKeyNotPressedNoSkip(t *testing.T) {
+	cpu := NewCPU()
+
+	keyIndex := uint16(0x5)
+	
+	// Simulate the key being pressed
+	cpu.keypad[keyIndex] = true
+	
+	originalPC := cpu.pc
+
+	err := cpu.skipIfKeyNotPressed(keyIndex)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfKeyNotPressed, got %v", err)
+	}
+
+	// Verify PC was NOT incremented
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
+
+// TestSkipIfKeyNotPressedOutOfBounds verifies that skipIfKeyNotPressed returns an error
+// when the requested key index exceeds 0xF (15).
+func TestSkipIfKeyNotPressedOutOfBounds(t *testing.T) {
+	cpu := NewCPU()
+
+	originalPC := cpu.pc
+	invalidKey := uint16(0x10) // Out of bounds
+
+	err := cpu.skipIfKeyNotPressed(invalidKey)
+	if err == nil {
+		t.Errorf("Expected error for out of bounds key, got none")
+	}
+
+	if err.Error() != "Key press is out of bounds" {
+		t.Errorf("Expected error message 'Key press is out of bounds', got '%v'", err.Error())
+	}
+
+	// Verify PC was not changed
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
+
+// TestSkipIfKeyNotPressedIsolation verifies that checking one key doesn't accidentally
+// rely on the state of another key.
+func TestSkipIfKeyNotPressedIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Press key 0x2
+	cpu.keypad[0x2] = true
+	// Ensure key 0x3 is NOT pressed
+	cpu.keypad[0x3] = false
+	
+	originalPC := cpu.pc
+
+	// Check key 0x2 (which IS pressed, so it should NOT skip)
+	err := cpu.skipIfKeyNotPressed(0x2)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// It should NOT skip
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
