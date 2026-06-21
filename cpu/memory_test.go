@@ -475,3 +475,110 @@ func TestStoreRegistersIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestLoadRegisters verifies that loadRegisters (0xFx65) correctly loads
+// memory values starting at the address in I into registers V0 through Vx.
+func TestLoadRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.i = uint16(0x300)
+	registerIndex := uint16(0x2) // Load into V0, V1, V2
+	
+	// Pre-fill memory
+	cpu.memory[0x300] = 0xAA
+	cpu.memory[0x301] = 0xBB
+	cpu.memory[0x302] = 0xCC
+
+	err := cpu.loadRegisters(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on loadRegisters, got %v", err)
+	}
+
+	// Verify registers were populated correctly
+	if cpu.registers[0] != 0xAA {
+		t.Errorf("Expected V0 to be 0xAA, got 0x%X", cpu.registers[0])
+	}
+	if cpu.registers[1] != 0xBB {
+		t.Errorf("Expected V1 to be 0xBB, got 0x%X", cpu.registers[1])
+	}
+	if cpu.registers[2] != 0xCC {
+		t.Errorf("Expected V2 to be 0xCC, got 0x%X", cpu.registers[2])
+	}
+
+	// Verify I register was correctly incremented (I = I + X + 1)
+	expectedI := uint16(0x303)
+	if cpu.i != expectedI {
+		t.Errorf("Expected I register to be incremented to 0x%X, got 0x%X", expectedI, cpu.i)
+	}
+}
+
+// TestLoadRegistersInvalidRegister verifies that loadRegisters returns an error
+// when the target register index exceeds 0xF.
+func TestLoadRegistersInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.loadRegisters(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestLoadRegistersOutOfBoundsMemory verifies that loadRegisters correctly
+// protects against reading beyond the maximum memory limit (0xFFF).
+func TestLoadRegistersOutOfBoundsMemory(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0xF) // Reading 16 bytes (V0-VF)
+	
+	// Position I dangerously close to the end of memory
+	cpu.i = uint16(0xFF1) 
+
+	err := cpu.loadRegisters(registerIndex)
+	if err == nil {
+		t.Errorf("Expected error for out of bounds memory read, got none")
+	}
+
+	if err.Error() != "Address out of bounds" {
+		t.Errorf("Expected error message 'Address out of bounds', got '%v'", err.Error())
+	}
+}
+
+// TestLoadRegistersIsolation verifies that loading registers from memory
+// does not accidentally overwrite registers beyond the target X index.
+func TestLoadRegistersIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.i = uint16(0x400)
+	registerIndex := uint16(0x3) // Only load V0, V1, V2, V3
+	
+	// Set baseline values for all registers so we can detect unintended mutation
+	for idx := 0; idx < 16; idx++ {
+		cpu.registers[idx] = 0x00 
+		cpu.memory[0x400+idx] = 0xFF // Memory holds all 0xFF
+	}
+
+	err := cpu.loadRegisters(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify targeted registers (V0-V3) were updated
+	for idx := 0; idx <= int(registerIndex); idx++ {
+		if cpu.registers[idx] != 0xFF {
+			t.Errorf("Target register %d failed to load: expected 0xFF, got 0x%X", idx, cpu.registers[idx])
+		}
+	}
+
+	// Verify un-targeted registers (V4-VF) maintained their baseline values
+	for idx := int(registerIndex) + 1; idx < 16; idx++ {
+		if cpu.registers[idx] != 0x00 {
+			t.Errorf("Out-of-bounds register %d was mutated during load: expected 0x00, got 0x%X", idx, cpu.registers[idx])
+		}
+	}
+}
