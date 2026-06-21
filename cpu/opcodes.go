@@ -386,3 +386,19 @@ func (cpu *CPU) storeRegisters(registerIndex uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) loadRegisters(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	if cpu.i > 0xFFF - registerIndex {
+		return errors.New("Address out of bounds")
+	}
+
+	for i := uint16(0); i < registerIndex + 1; i++ {
+		cpu.registers[i] = cpu.memory[cpu.i]
+		cpu.i ++
+	}
+
+	return nil
+}
