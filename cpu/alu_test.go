@@ -1639,3 +1639,97 @@ func TestRandRegIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestGetDelayTimer verifies that getDelayTimer (0xFx07) correctly sets
+// the specified register to the current value of the delay timer.
+func TestGetDelayTimer(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	expectedTimerValue := uint8(0x3C) // 60
+	
+	// Set the delay timer to a specific value
+	cpu.delayTimer = expectedTimerValue
+
+	err := cpu.getDelayTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on getDelayTimer, got %v", err)
+	}
+
+	// Verify the register was updated with the timer's value
+	if cpu.registers[registerIndex] != expectedTimerValue {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", registerIndex, expectedTimerValue, cpu.registers[registerIndex])
+	}
+}
+
+// TestGetDelayTimerZero verifies that getDelayTimer works correctly
+// when the delay timer is at 0.
+func TestGetDelayTimerZero(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x2)
+	cpu.delayTimer = 0x00
+
+	err := cpu.getDelayTimer(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on getDelayTimer, got %v", err)
+	}
+
+	if cpu.registers[registerIndex] != 0x00 {
+		t.Errorf("Expected register[%d] to be 0x00, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+}
+
+// TestGetDelayTimerInvalidRegister verifies that getDelayTimer returns an error
+// when the register index exceeds 0xF.
+func TestGetDelayTimerInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	cpu.delayTimer = 0x42
+
+	err := cpu.getDelayTimer(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestGetDelayTimerIsolation verifies that reading the delay timer into
+// one register doesn't overwrite or affect the other registers.
+func TestGetDelayTimerIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	targetRegister := uint16(0x7)
+	cpu.delayTimer = 0xFF
+
+	err := cpu.getDelayTimer(targetRegister)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify target was updated
+	if cpu.registers[targetRegister] != 0xFF {
+		t.Errorf("Expected register[7] to be 0xFF, got 0x%X", cpu.registers[targetRegister])
+	}
+
+	// Verify all other registers remain completely unchanged
+	for i := 0; i < 16; i++ {
+		if i == int(targetRegister) {
+			continue
+		}
+		
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
