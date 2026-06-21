@@ -287,8 +287,21 @@ func (cpu *CPU) getDelayTimer(registerIndex uint16) error {
 	if registerIndex > 0xF {
 		return errors.New("Invalid Register")
 	}
-	
+
 	cpu.registers[registerIndex] = cpu.delayTimer
+
+	return nil
+}
+
+func (cpu *CPU) waitForKeyPress(registerIndex uint16,key uint16) error {
+	if key > 0xF {
+		return errors.New("Key press is out of bounds")
+	}
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.registers[registerIndex] = uint8(key)
 
 	return nil
 }
