@@ -2456,5 +2456,124 @@ func TestSetIEdgeCases(t *testing.T) {
 	}
 	if cpu.i != 0xFFF {
 		t.Errorf("Expected I register to be 0xFFF, got 0x%X", cpu.i)
+// TestSkipIfNotEqualRegSkip verifies that skipIfNotEqualReg (0x9xy0) correctly skips
+// the next instruction when two registers contain different values.
+func TestSkipIfNotEqualRegSkip(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x3)
+	register2 := uint16(0x7)
+
+	// Set registers to different values
+	cpu.registers[register1] = 0x42
+	cpu.registers[register2] = 0x50
+	cpu.pc = 0x200
+	originalPC := cpu.pc
+
+	err := cpu.skipIfNotEqualReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfNotEqualReg, got %v", err)
+	}
+
+	// Verify PC was incremented by 2 (skip next instruction)
+	expectedPC := originalPC + 2
+	if cpu.pc != expectedPC {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", expectedPC, cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualRegNoSkip verifies that skipIfNotEqualReg does NOT skip
+// when registers contain equal values.
+func TestSkipIfNotEqualRegNoSkip(t *testing.T) {
+	cpu := NewCPU()
+
+	register1 := uint16(0x2)
+	register2 := uint16(0x5)
+
+	// Set registers to the exact same value
+	cpu.registers[register1] = 0x42
+	cpu.registers[register2] = 0x42
+	cpu.pc = 0x200
+	originalPC := cpu.pc
+
+	err := cpu.skipIfNotEqualReg(register1, register2)
+	if err != nil {
+		t.Errorf("Expected no error on skipIfNotEqualReg, got %v", err)
+	}
+
+	// Verify PC was NOT incremented
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
+
+// TestSkipIfNotEqualRegInvalidRegister1 verifies that skipIfNotEqualReg returns an error
+// when the first register index exceeds 0xF.
+func TestSkipIfNotEqualRegInvalidRegister1(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	validRegister := uint16(0x5)
+
+	err := cpu.skipIfNotEqualReg(invalidRegister, validRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid first register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSkipIfNotEqualRegInvalidRegister2 verifies that skipIfNotEqualReg returns an error
+// when the second register index exceeds 0xF.
+func TestSkipIfNotEqualRegInvalidRegister2(t *testing.T) {
+	cpu := NewCPU()
+
+	validRegister := uint16(0x5)
+	invalidRegister := uint16(0x10)
+
+	err := cpu.skipIfNotEqualReg(validRegister, invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid second register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSkipIfNotEqualRegBothInvalid verifies that skipIfNotEqualReg returns an error
+// when both register indices exceed 0xF.
+func TestSkipIfNotEqualRegBothInvalid(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidReg1 := uint16(0x10)
+	invalidReg2 := uint16(0x11)
+
+	err := cpu.skipIfNotEqualReg(invalidReg1, invalidReg2)
+	if err == nil {
+		t.Errorf("Expected error for both invalid registers, got none")
+	}
+}
+
+// TestSkipIfNotEqualRegSameRegister verifies that skipIfNotEqualReg behaves correctly
+// when comparing a register to itself (it should never skip).
+func TestSkipIfNotEqualRegSameRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	cpu.registers[registerIndex] = 0x7A
+	cpu.pc = 0x200
+	originalPC := cpu.pc
+
+	// Comparing a register to itself means they are equal, so it should NOT skip
+	err := cpu.skipIfNotEqualReg(registerIndex, registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error comparing register to itself, got %v", err)
+	}
+
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
 	}
 }

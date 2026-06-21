@@ -200,3 +200,14 @@ func (cpu *CPU) setI(address uint16) error {
 	return nil
 }
 
+func (cpu *CPU) skipIfNotEqualReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	if cpu.registers[register1Index] != cpu.registers[register2Index] {
+		cpu.pc += 2
+	}
+
+	return nil
+}
