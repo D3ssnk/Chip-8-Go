@@ -375,3 +375,103 @@ func TestStoreBCDOutOfBoundsMemory(t *testing.T) {
 		t.Errorf("Expected error message 'Address out of bounds', got '%v'", err.Error())
 	}
 }
+
+// TestStoreRegisters verifies that storeRegisters (0xFx55) correctly stores
+// registers V0 through Vx into memory starting at the address in I.
+func TestStoreRegisters(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.i = uint16(0x300)
+	registerIndex := uint16(0x2) // Store V0, V1, V2
+	
+	cpu.registers[0] = 0xAA
+	cpu.registers[1] = 0xBB
+	cpu.registers[2] = 0xCC
+
+	err := cpu.storeRegisters(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on storeRegisters, got %v", err)
+	}
+
+	// Verify memory was written sequentially
+	if cpu.memory[0x300] != 0xAA {
+		t.Errorf("Expected memory[0x300] to be 0xAA, got 0x%X", cpu.memory[0x300])
+	}
+	if cpu.memory[0x301] != 0xBB {
+		t.Errorf("Expected memory[0x301] to be 0xBB, got 0x%X", cpu.memory[0x301])
+	}
+	if cpu.memory[0x302] != 0xCC {
+		t.Errorf("Expected memory[0x302] to be 0xCC, got 0x%X", cpu.memory[0x302])
+	}
+
+	// Verify I register was correctly incremented (Original CHIP-8 behavior: I = I + X + 1)
+	expectedI := uint16(0x303)
+	if cpu.i != expectedI {
+		t.Errorf("Expected I register to be incremented to 0x%X, got 0x%X", expectedI, cpu.i)
+	}
+}
+
+// TestStoreRegistersInvalidRegister verifies that storeRegisters returns an error
+// when the target register index exceeds 0xF.
+func TestStoreRegistersInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.storeRegisters(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestStoreRegistersOutOfBoundsMemory verifies that storeRegisters correctly
+// protects against writing beyond the maximum memory limit (0xFFF).
+func TestStoreRegistersOutOfBoundsMemory(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0xF) // Writing 16 bytes (V0-VF)
+	
+	// Position I dangerously close to the end of memory
+	// 0xFFF - 0xF = 0xFF0. If we start at 0xFF1, it will overflow.
+	cpu.i = uint16(0xFF1) 
+
+	err := cpu.storeRegisters(registerIndex)
+	if err == nil {
+		t.Errorf("Expected error for out of bounds memory write, got none")
+	}
+
+	if err.Error() != "Address out of bounds" {
+		t.Errorf("Expected error message 'Address out of bounds', got '%v'", err.Error())
+	}
+}
+
+// TestStoreRegistersIsolation verifies that storing registers to memory
+// does not accidentally alter the values within the registers themselves.
+func TestStoreRegistersIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	cpu.i = uint16(0x400)
+	registerIndex := uint16(0x3)
+	
+	// Pre-fill registers
+	for idx := 0; idx < 16; idx++ {
+		cpu.registers[idx] = uint8(idx * 10)
+	}
+
+	err := cpu.storeRegisters(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify all 16 registers maintained their exact values
+	for idx := 0; idx < 16; idx++ {
+		expectedValue := uint8(idx * 10)
+		if cpu.registers[idx] != expectedValue {
+			t.Errorf("Register %d was mutated during store: expected 0x%X, got 0x%X", idx, expectedValue, cpu.registers[idx])
+		}
+	}
+}
