@@ -48,7 +48,7 @@ type CPU struct {
 	// SoundTimer is an 8-bit timer that decrements at 60Hz; produces sound when non-zero.
 	soundTimer uint8
 	// Display is the 64x32 pixel screen (stored as 32 rows of 8-byte width).
-	display [32][8]uint8
+	display [32][64]bool
 	// Keypad holds the state of the 16 hexadecimal input keys (0x0-0xF).
 	keypad [16]bool
 }

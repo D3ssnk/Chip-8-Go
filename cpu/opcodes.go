@@ -3,7 +3,7 @@ package cpu
 import "errors"
 
 func (cpu *CPU) clear() {
-	cpu.display = [32][8]uint8{}
+	cpu.display = [32][64]bool{}
 }
 
 func (cpu *CPU) ret() error {
@@ -142,12 +142,12 @@ func (cpu *CPU) subReg(register1Index uint16, register2Index uint16) error {
 }
 
 func (cpu *CPU) shiftRight(register1Index uint16) error {
-	if register1Index  > 0xF {
+	if register1Index > 0xF {
 		return errors.New("Invalid Register")
 	}
 	register1Value := cpu.registers[register1Index]
 
-	if register1Value & 0x01 == 0x01 {
+	if register1Value&0x01 == 0x01 {
 		cpu.registers[0xF] = 1
 	} else {
 		cpu.registers[0xF] = 0
@@ -175,12 +175,12 @@ func (cpu *CPU) subRegReverse(register1Index uint16, register2Index uint16) erro
 }
 
 func (cpu *CPU) shiftLeft(register1Index uint16) error {
-	if register1Index  > 0xF {
+	if register1Index > 0xF {
 		return errors.New("Invalid Register")
 	}
 	register1Value := cpu.registers[register1Index]
 
-	if register1Value >> 7 == 0x01 {
+	if register1Value>>7 == 0x01 {
 		cpu.registers[0xF] = 1
 	} else {
 		cpu.registers[0xF] = 0
@@ -213,11 +213,36 @@ func (cpu *CPU) skipIfNotEqualReg(register1Index uint16, register2Index uint16) 
 }
 
 func (cpu *CPU) jumpV0(address uint16) error {
-	if uint16(cpu.registers[0x0]) + address > 0xFFF {
+	if uint16(cpu.registers[0x0])+address > 0xFFF {
 		return errors.New("Address is out of bounds")
 	}
 
 	cpu.pc = uint16(cpu.registers[0x0]) + address
+
+	return nil
+}
+
+func (cpu *CPU) draw(xcord uint16, ycord uint16, counter uint16) error {
+	if xcord >= 0x40 || ycord >= 0x20 {
+		return errors.New("Cordinates out of bounds")
+	}
+	if cpu.i+counter > 0xFFF {
+		return errors.New("Address out of bounds")
+	}
+
+	cpu.registers[0xF] = 0
+	for i, currentByte := range cpu.memory[cpu.i : cpu.i+counter] {
+		for j := 0; j < 8; j++ {
+			currentPixelX := (int(xcord) + j) % 64
+			currentPixelY := (int(ycord) + i) % 32
+			if (currentByte>>(7-j))&0x01 == 0x01 {
+				if cpu.display[currentPixelY][currentPixelX] {
+					cpu.registers[0xF] = 1
+				}
+				cpu.display[currentPixelY][currentPixelX] = !cpu.display[currentPixelY][currentPixelX]
+			}
+		}
+	}
 
 	return nil
 }
