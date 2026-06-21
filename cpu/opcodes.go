@@ -225,6 +225,16 @@ func (cpu *CPU) jumpV0(address uint16) error {
 	return nil
 }
 
+func (cpu *CPU) randReg(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	randVal := rand.IntN(256)
+	cpu.registers[registerIndex] = (uint8(lastByte) & uint8(randVal))
+
+	return nil
+}
+
 func (cpu *CPU) draw(xcord uint16, ycord uint16, counter uint16) error {
 	if xcord >= 0x40 || ycord >= 0x20 {
 		return errors.New("Cordinates out of bounds")
@@ -246,12 +256,17 @@ func (cpu *CPU) draw(xcord uint16, ycord uint16, counter uint16) error {
 			}
 		}
 	}
-func (cpu *CPU) randReg(registerIndex uint16, lastByte uint16) error {
-	if registerIndex > 0xF {
-		return errors.New("Invalid Register")
+	return nil
+}
+
+func (cpu *CPU) skipIfKeyPressed(key uint16) error {
+	if key > 0xF {
+		return errors.New("Key press is out of bounds")
 	}
-	randVal := rand.IntN(256)
-	cpu.registers[registerIndex] = (uint8(lastByte) & uint8(randVal))
+
+	if cpu.keypad[key] {
+		cpu.pc += 2
+	}
 
 	return nil
 }
