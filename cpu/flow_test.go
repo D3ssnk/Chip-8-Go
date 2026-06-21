@@ -6,22 +6,22 @@ import (
 )
 
 // TestClear verifies that the clear opcode (0x00E0) properly clears the display.
-// The display should be set to all zeros after the clear operation.
+// The display should be set to all false (off) after the clear operation.
 func TestClear(t *testing.T) {
 	cpu := NewCPU()
 
-	// Fill the display with non-zero values
+	// Fill the display with true (on) values
 	for i := 0; i < 32; i++ {
-		for j := 0; j < 8; j++ {
-			cpu.display[i][j] = 0xFF
+		for j := 0; j < 64; j++ {
+			cpu.display[i][j] = true
 		}
 	}
 
 	// Verify display is filled
 	for i := 0; i < 32; i++ {
-		for j := 0; j < 8; j++ {
-			if cpu.display[i][j] != 0xFF {
-				t.Errorf("Expected display[%d][%d] to be 0xFF before clear, got 0x%X", i, j, cpu.display[i][j])
+		for j := 0; j < 64; j++ {
+			if !cpu.display[i][j] {
+				t.Errorf("Expected display[%d][%d] to be true before clear, got false", i, j)
 			}
 		}
 	}
@@ -29,11 +29,12 @@ func TestClear(t *testing.T) {
 	// Execute clear opcode
 	cpu.clear()
 
-	// Verify display is cleared (all zeros)
+	// Verify display is cleared (all false)
 	for i := 0; i < 32; i++ {
-		for j := 0; j < 8; j++ {
-			if cpu.display[i][j] != 0x00 {
-				t.Errorf("Expected display[%d][%d] to be 0x00 after clear, got 0x%X", i, j, cpu.display[i][j])
+		for j := 0; j < 64; j++ {
+			// If the pixel is true, the clear failed
+			if cpu.display[i][j] {
+				t.Errorf("Expected display[%d][%d] to be false after clear, got true", i, j)
 			}
 		}
 	}
@@ -45,21 +46,21 @@ func TestClearMultipleTimes(t *testing.T) {
 	cpu := NewCPU()
 
 	for iteration := 0; iteration < 3; iteration++ {
-		// Fill display with pattern
+		// Fill display with an alternating pattern
 		for i := 0; i < 32; i++ {
-			for j := 0; j < 8; j++ {
-				cpu.display[i][j] = uint8((i + j) % 256)
+			for j := 0; j < 64; j++ {
+				cpu.display[i][j] = (i+j)%2 == 0
 			}
 		}
 
 		// Clear display
 		cpu.clear()
 
-		// Verify all pixels are cleared
+		// Verify all pixels are cleared (set to false)
 		for i := 0; i < 32; i++ {
-			for j := 0; j < 8; j++ {
-				if cpu.display[i][j] != 0x00 {
-					t.Errorf("Iteration %d: Expected display[%d][%d] to be 0x00, got 0x%X", iteration, i, j, cpu.display[i][j])
+			for j := 0; j < 64; j++ {
+				if cpu.display[i][j] {
+					t.Errorf("Iteration %d: Expected display[%d][%d] to be false, got true", iteration, i, j)
 				}
 			}
 		}
@@ -438,5 +439,138 @@ func TestJumpV0EdgeCases(t *testing.T) {
 	}
 	if cpu.pc != 0x400 {
 		t.Errorf("Expected PC to be 0x400, got 0x%X", cpu.pc)
+	}
+}
+
+// TestDrawBasic verifies that the draw opcode (0xDxyn) correctly renders
+// a sprite to the display and sets VF to 0 when no pixels are erased.
+func TestDrawBasic(t *testing.T) {
+	cpu := NewCPU()
+
+	// Set up memory with a 1-byte sprite: 0xC0 (Binary: 1100 0000)
+	cpu.i = 0x300
+	cpu.memory[cpu.i] = 0xC0
+	
+	// Pre-set VF to 1 to ensure the draw function resets it to 0
+	cpu.registers[0xF] = 1
+
+	// Draw 1 byte at (X: 0, Y: 0)
+	err := cpu.draw(0, 0, 1)
+	if err != nil {
+		t.Errorf("Expected no error on draw, got %v", err)
+	}
+
+	// Verify pixels were toggled on
+	if !cpu.display[0][0] {
+		t.Errorf("Expected display[0][0] to be true")
+	}
+	if !cpu.display[0][1] {
+		t.Errorf("Expected display[0][1] to be true")
+	}
+	// Verify subsequent pixel is off
+	if cpu.display[0][2] {
+		t.Errorf("Expected display[0][2] to be false")
+	}
+
+	// Verify VF flag was reset to 0 (no collision)
+	if cpu.registers[0xF] != 0 {
+		t.Errorf("Expected VF (register[15]) to be 0, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestDrawCollision verifies that drawing over an existing active pixel
+// correctly turns the pixel off (XOR) and sets VF to 1.
+func TestDrawCollision(t *testing.T) {
+	cpu := NewCPU()
+
+	// Pre-activate a pixel at (0, 0)
+	cpu.display[0][0] = true
+
+	// Set up memory with a 1-byte sprite: 0xC0 (Binary: 1100 0000)
+	cpu.i = 0x300
+	cpu.memory[cpu.i] = 0xC0
+
+	// Draw 1 byte at (X: 0, Y: 0)
+	err := cpu.draw(0, 0, 1)
+	if err != nil {
+		t.Errorf("Expected no error on draw, got %v", err)
+	}
+
+	// Verify pixel [0][0] was XOR'd off (collision)
+	if cpu.display[0][0] {
+		t.Errorf("Expected display[0][0] to be false after collision")
+	}
+	// Verify pixel [0][1] was toggled on (no collision)
+	if !cpu.display[0][1] {
+		t.Errorf("Expected display[0][1] to be true")
+	}
+
+	// Verify VF flag was set to 1 (collision occurred)
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF (register[15]) to be 1 due to collision, got %d", cpu.registers[0xF])
+	}
+}
+
+// TestDrawWrapping verifies that sprites correctly wrap around the edges
+// of the 64x32 display.
+func TestDrawWrapping(t *testing.T) {
+	cpu := NewCPU()
+
+	// Set up memory with a 1-byte sprite: 0xC0 (Binary: 1100 0000)
+	cpu.i = 0x300
+	cpu.memory[cpu.i] = 0xC0
+
+	// Draw 1 byte at the extreme bottom right: X=63, Y=31
+	err := cpu.draw(63, 31, 1)
+	if err != nil {
+		t.Errorf("Expected no error on draw, got %v", err)
+	}
+
+	// The first bit (1) should be at [31][63]
+	if !cpu.display[31][63] {
+		t.Errorf("Expected display[31][63] to be true")
+	}
+	// The second bit (1) should wrap around to the left edge [31][0]
+	if !cpu.display[31][0] {
+		t.Errorf("Expected display[31][0] to be true (wrapped)")
+	}
+}
+
+// TestDrawOutOfBoundsCoords verifies the function properly rejects
+// starting coordinates that exceed screen dimensions.
+func TestDrawOutOfBoundsCoords(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test X out of bounds
+	err := cpu.draw(64, 0, 1)
+	if err == nil {
+		t.Errorf("Expected error for X coordinate out of bounds, got none")
+	}
+	if err != nil && err.Error() != "Cordinates out of bounds" {
+		t.Errorf("Expected 'Cordinates out of bounds', got '%v'", err.Error())
+	}
+
+	// Test Y out of bounds
+	err = cpu.draw(0, 32, 1)
+	if err == nil {
+		t.Errorf("Expected error for Y coordinate out of bounds, got none")
+	}
+}
+
+// TestDrawOutOfBoundsMemory verifies the function prevents reading past
+// the maximum valid memory address of 0xFFF.
+func TestDrawOutOfBoundsMemory(t *testing.T) {
+	cpu := NewCPU()
+
+	// Position the index register at the very end of memory
+	cpu.i = 0xFFF
+	
+	// Try to draw 2 bytes (which would require reading 0x1000)
+	err := cpu.draw(0, 0, 2)
+	if err == nil {
+		t.Errorf("Expected error for memory read out of bounds, got none")
+	}
+	if err != nil && err.Error() != "Address out of bounds" {
+		t.Errorf("Expected 'Address out of bounds', got '%v'", err.Error())
 	}
 }
