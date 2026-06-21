@@ -338,3 +338,16 @@ func (cpu *CPU) addI(registerIndex uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) setIToFont(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	if cpu.registers[registerIndex] > 0xF {
+		return errors.New("Not a font")
+	}
+
+	cpu.i = uint16(cpu.registers[registerIndex] * 5)
+
+	return nil
+}

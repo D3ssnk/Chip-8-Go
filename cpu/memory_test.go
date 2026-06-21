@@ -174,3 +174,109 @@ func TestAddIEdgeCases(t *testing.T) {
 		t.Errorf("Expected I register to be 0xFFF, got 0x%X", cpu.i)
 	}
 }
+
+// TestSetIToFont verifies that setIToFont (0xFx29) correctly sets the I register
+// to the memory address of the hex font character stored in Vx.
+func TestSetIToFont(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	fontChar := uint8(0xA) // Font 'A'
+	cpu.registers[registerIndex] = fontChar
+
+	err := cpu.setIToFont(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error on setIToFont, got %v", err)
+	}
+
+	// Each font sprite is 5 bytes. The offset for 'A' (10) should be 50 (0x32).
+	expectedI := uint16(fontChar * 5)
+	if cpu.i != expectedI {
+		t.Errorf("Expected I register to be 0x%X, got 0x%X", expectedI, cpu.i)
+	}
+}
+
+// TestSetIToFontInvalidRegister verifies that setIToFont returns an error
+// when the register index exceeds 0xF.
+func TestSetIToFontInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+
+	err := cpu.setIToFont(invalidRegister)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestSetIToFontInvalidFont verifies that setIToFont returns an error
+// when the value stored in the register is larger than 0xF (not a valid hex font).
+func TestSetIToFontInvalidFont(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x2)
+	invalidFontChar := uint8(0x10) // CHIP-8 only has fonts for 0x0 through 0xF
+	cpu.registers[registerIndex] = invalidFontChar
+
+	err := cpu.setIToFont(registerIndex)
+	if err == nil {
+		t.Errorf("Expected error for invalid font character, got none")
+	}
+
+	if err.Error() != "Not a font" {
+		t.Errorf("Expected error message 'Not a font', got '%v'", err.Error())
+	}
+}
+
+// TestSetIToFontEdgeCases verifies setIToFont works correctly at the absolute
+// minimum (0) and maximum (F) valid font character boundaries.
+func TestSetIToFontEdgeCases(t *testing.T) {
+	cpu := NewCPU()
+	registerIndex := uint16(0x3)
+
+	// Test minimum boundary: Font '0'
+	cpu.registers[registerIndex] = 0x0
+	err := cpu.setIToFont(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error for font 0, got %v", err)
+	}
+	if cpu.i != 0x000 {
+		t.Errorf("Expected I register to be 0x000 for font 0, got 0x%X", cpu.i)
+	}
+
+	// Test maximum boundary: Font 'F' (15)
+	cpu.registers[registerIndex] = 0xF
+	err = cpu.setIToFont(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error for font F, got %v", err)
+	}
+	
+	expectedI := uint16(15 * 5) // 75 (0x4B)
+	if cpu.i != expectedI {
+		t.Errorf("Expected I register to be 0x%X for font F, got 0x%X", expectedI, cpu.i)
+	}
+}
+
+// TestSetIToFontIsolation verifies that calculating the font offset
+// does not accidentally mutate the source register.
+func TestSetIToFontIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x7)
+	fontChar := uint8(0xB)
+	cpu.registers[registerIndex] = fontChar
+
+	err := cpu.setIToFont(registerIndex)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify the register still holds the base font character
+	if cpu.registers[registerIndex] != fontChar {
+		t.Errorf("Expected register[%d] to remain 0x%X, got 0x%X", registerIndex, fontChar, cpu.registers[registerIndex])
+	}
+}
