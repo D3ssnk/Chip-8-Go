@@ -325,3 +325,16 @@ func (cpu *CPU) setSoundTimer(registerIndex uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) addI(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	if cpu.i + uint16(cpu.registers[registerIndex]) > 0xFFF {
+		return errors.New("Address out of bounds")
+	}
+
+	cpu.i = cpu.i + uint16(cpu.registers[registerIndex])
+
+	return nil
+}
