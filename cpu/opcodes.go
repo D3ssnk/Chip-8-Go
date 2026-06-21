@@ -351,3 +351,22 @@ func (cpu *CPU) setIToFont(registerIndex uint16) error {
 
 	return nil
 }
+
+func (cpu *CPU) storeBCD(registerIndex uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	if cpu.i > 0xFFF - 2 {
+		return errors.New("Address out of bounds")
+	}
+	registerValue := cpu.registers[registerIndex]
+	hundrethDigit := (registerValue / 100) % 10
+	tenthDigit := (registerValue / 10) % 10
+	unitDigit := registerValue % 10
+
+	cpu.memory[cpu.i] = hundrethDigit
+	cpu.memory[cpu.i + 1] = tenthDigit
+	cpu.memory[cpu.i + 2] = unitDigit
+
+	return nil
+}
