@@ -1,6 +1,9 @@
 package cpu
 
-import "errors"
+import (
+	"errors"
+	"math/rand/v2"
+)
 
 func (cpu *CPU) clear() {
 	cpu.display = [32][8]uint8{}
@@ -218,6 +221,16 @@ func (cpu *CPU) jumpV0(address uint16) error {
 	}
 
 	cpu.pc = uint16(cpu.registers[0x0]) + address
+
+	return nil
+}
+
+func (cpu *CPU) randReg(registerIndex uint16, lastByte uint16) error {
+	if registerIndex > 0xF {
+		return errors.New("Invalid Register")
+	}
+	randVal := rand.IntN(256)
+	cpu.registers[registerIndex] = (uint8(lastByte) & uint8(randVal))
 
 	return nil
 }

@@ -1556,3 +1556,86 @@ func TestShiftLeftIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestRandReg bounds-checks randReg (0xCxkk) to ensure the random value
+// is properly ANDed with the provided mask byte.
+func TestRandReg(t *testing.T) {
+	cpu := NewCPU()
+	registerIndex := uint16(0x5)
+
+	// Test 1: Mask of 0x00. Any random number ANDed with 0x00 must result in 0x00.
+	err := cpu.randReg(registerIndex, 0x00)
+	if err != nil {
+		t.Errorf("Expected no error on randReg, got %v", err)
+	}
+	if cpu.registers[registerIndex] != 0x00 {
+		t.Errorf("Expected register[%d] to be 0x00 when ANDed with 0x00, got 0x%X", registerIndex, cpu.registers[registerIndex])
+	}
+
+	// Test 2: Specific mask (e.g., 0x0F). 
+	// We run this multiple times to statistically ensure the bitwise AND is enforced.
+	mask := uint16(0x0F) // Binary: 0000 1111
+	for i := 0; i < 20; i++ {
+		err = cpu.randReg(registerIndex, mask)
+		if err != nil {
+			t.Errorf("Iteration %d: Expected no error on randReg, got %v", i, err)
+		}
+		
+		// The result must never be larger than the mask
+		if cpu.registers[registerIndex] > uint8(mask) {
+			t.Errorf("Iteration %d: Expected register[%d] to be <= 0x0F, got 0x%X", i, registerIndex, cpu.registers[registerIndex])
+		}
+		
+		// Bitwise check to ensure absolutely no bits outside the mask were set
+		if (cpu.registers[registerIndex] & ^uint8(mask)) != 0 {
+			t.Errorf("Iteration %d: Bits outside mask were set, got 0x%X", i, cpu.registers[registerIndex])
+		}
+	}
+}
+
+// TestRandRegInvalidRegister verifies that randReg returns an error
+// when the register index exceeds 0xF.
+func TestRandRegInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	
+	err := cpu.randReg(invalidRegister, 0xFF)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestRandRegIsolation verifies that generating a random number for one
+// register doesn't affect the state of others.
+func TestRandRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	targetRegister := uint16(4)
+	
+	err := cpu.randReg(targetRegister, 0xFF)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify all other registers remain unchanged
+	for i := 0; i < 16; i++ {
+		if i == int(targetRegister) {
+			continue
+		}
+		
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
