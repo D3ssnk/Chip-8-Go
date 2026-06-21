@@ -127,6 +127,35 @@ func (cpu *CPU) andReg(register1Index uint16, register2Index uint16) error {
 	return nil
 }
 
+func (cpu *CPU) xorReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+
+	cpu.registers[register1Index] = cpu.registers[register2Index] ^ cpu.registers[register1Index]
+
+	return nil
+}
+
+func (cpu *CPU) addReg(register1Index uint16, register2Index uint16) error {
+	if register1Index > 0xF || register2Index > 0xF {
+		return errors.New("Invalid Register")
+	}
+	
+	tmpVal := uint16(cpu.registers[register2Index]) + uint16(cpu.registers[register1Index])
+	cpu.registers[register1Index] = cpu.registers[register2Index] + cpu.registers[register1Index]
+	
+	if tmpVal > 0xFF {
+		cpu.registers[0xF] = 1
+	} else {
+		cpu.registers[0xF] = 0
+	}
+
+	
+
+	return nil
+}
+
 func (cpu *CPU) subReg(register1Index uint16, register2Index uint16) error {
 	if register1Index > 0xF || register2Index > 0xF {
 		return errors.New("Invalid Register")

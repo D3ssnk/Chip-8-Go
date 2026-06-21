@@ -2008,3 +2008,244 @@ func TestSetSoundTimerIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestXorRegBasic verifies that xorReg (0x8xy3) correctly performs a bitwise XOR
+// between two registers and stores the result in the first register.
+func TestXorRegBasic(t *testing.T) {
+	cpu := NewCPU()
+
+	reg1 := uint16(0x1)
+	reg2 := uint16(0x2)
+
+	// 0xAA (10101010) XOR 0x55 (01010101) = 0xFF (11111111)
+	cpu.registers[reg1] = 0xAA
+	cpu.registers[reg2] = 0x55
+
+	err := cpu.xorReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error on xorReg, got %v", err)
+	}
+
+	if cpu.registers[reg1] != 0xFF {
+		t.Errorf("Expected V1 to be 0xFF, got 0x%X", cpu.registers[reg1])
+	}
+	// Verify reg2 was not modified
+	if cpu.registers[reg2] != 0x55 {
+		t.Errorf("Expected V2 to remain 0x55, got 0x%X", cpu.registers[reg2])
+	}
+}
+
+// TestXorRegSelf verifies that XORing a register with itself results in 0x00.
+func TestXorRegSelf(t *testing.T) {
+	cpu := NewCPU()
+
+	reg1 := uint16(0x5)
+	
+	// Any value XORed with itself is 0
+	cpu.registers[reg1] = 0x42 
+
+	err := cpu.xorReg(reg1, reg1)
+	if err != nil {
+		t.Errorf("Expected no error on xorReg, got %v", err)
+	}
+
+	if cpu.registers[reg1] != 0x00 {
+		t.Errorf("Expected V5 to be 0x00 after self-XOR, got 0x%X", cpu.registers[reg1])
+	}
+}
+
+// TestXorRegInvalidRegisters verifies bounds checking for the xorReg opcode
+// to ensure it rejects registers outside the 0x0-0xF range.
+func TestXorRegInvalidRegisters(t *testing.T) {
+	cpu := NewCPU()
+	
+	validReg := uint16(0x5)
+	invalidReg := uint16(0x10) // 16 is out of bounds
+
+	// Test invalid reg1
+	err := cpu.xorReg(invalidReg, validReg)
+	if err == nil {
+		t.Errorf("Expected error for invalid reg1, got none")
+	}
+	if err != nil && err.Error() != "Invalid Register" {
+		t.Errorf("Expected 'Invalid Register' error, got '%v'", err.Error())
+	}
+
+	// Test invalid reg2
+	err = cpu.xorReg(validReg, invalidReg)
+	if err == nil {
+		t.Errorf("Expected error for invalid reg2, got none")
+	}
+	if err != nil && err.Error() != "Invalid Register" {
+		t.Errorf("Expected 'Invalid Register' error, got '%v'", err.Error())
+	}
+}
+
+// TestXorRegIsolation verifies that performing an XOR operation
+// does not accidentally alter the values of unrelated registers.
+func TestXorRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Fill all registers with distinct baseline values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	reg1 := uint16(0x2)
+	reg2 := uint16(0x3)
+
+	err := cpu.xorReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify un-targeted registers maintained their baseline values
+	for i := 0; i < 16; i++ {
+		if i == int(reg1) || i == int(reg2) {
+			continue // Skip the ones we intentionally interacted with
+		}
+		
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Unrelated register %d was mutated: expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
+// TestAddRegNoCarry verifies that addReg (0x8xy4) correctly adds two registers
+// when the result is <= 255, and sets the carry flag (VF) to 0.
+func TestAddRegNoCarry(t *testing.T) {
+	cpu := NewCPU()
+
+	reg1 := uint16(0x3)
+	reg2 := uint16(0x4)
+
+	cpu.registers[reg1] = 100
+	cpu.registers[reg2] = 50
+	
+	// Pre-set VF to 1 to ensure it gets cleared to 0
+	cpu.registers[0xF] = 1
+
+	err := cpu.addReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error on addReg, got %v", err)
+	}
+
+	if cpu.registers[reg1] != 150 {
+		t.Errorf("Expected V3 to be 150, got %d", cpu.registers[reg1])
+	}
+	if cpu.registers[0xF] != 0 {
+		t.Errorf("Expected VF to be 0 (no carry), got %d", cpu.registers[0xF])
+	}
+}
+
+// TestAddRegCarry verifies that addReg (0x8xy4) correctly adds two registers
+// when the result > 255, handles the uint8 wraparound, and sets VF to 1.
+func TestAddRegCarry(t *testing.T) {
+	cpu := NewCPU()
+
+	reg1 := uint16(0x3)
+	reg2 := uint16(0x4)
+
+	cpu.registers[reg1] = 200
+	cpu.registers[reg2] = 100
+	
+	// Pre-set VF to 0 to ensure it gets set to 1
+	cpu.registers[0xF] = 0
+
+	err := cpu.addReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error on addReg, got %v", err)
+	}
+
+	// 200 + 100 = 300. 300 % 256 = 44.
+	expectedValue := uint8(44)
+	if cpu.registers[reg1] != expectedValue {
+		t.Errorf("Expected V3 to wrap around to %d, got %d", expectedValue, cpu.registers[reg1])
+	}
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF to be 1 (carry occurred), got %d", cpu.registers[0xF])
+	}
+}
+
+// TestAddRegTargetingVF verifies the edge case where the target register IS the VF register.
+// The carry flag must dictate the final value of the register, overwriting the math result.
+func TestAddRegTargetingVF(t *testing.T) {
+	cpu := NewCPU()
+
+	reg1 := uint16(0xF) // VF
+	reg2 := uint16(0x1)
+
+	// 200 + 100 = 300 (Carry = 1)
+	cpu.registers[reg1] = 200
+	cpu.registers[reg2] = 100
+
+	err := cpu.addReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Even though the math equals 44, because the target was VF, it must be
+	// overwritten by the carry flag (1) at the end of the operation.
+	if cpu.registers[0xF] != 1 {
+		t.Errorf("Expected VF to be overwritten by the carry flag (1), got %d", cpu.registers[0xF])
+	}
+}
+
+// TestAddRegInvalidRegisters verifies bounds checking for the addReg opcode
+// to ensure it rejects registers outside the 0x0-0xF range.
+func TestAddRegInvalidRegisters(t *testing.T) {
+	cpu := NewCPU()
+	
+	validReg := uint16(0x5)
+	invalidReg := uint16(0x10) // Out of bounds
+
+	// Test invalid reg1
+	err := cpu.addReg(invalidReg, validReg)
+	if err == nil {
+		t.Errorf("Expected error for invalid reg1, got none")
+	}
+	if err != nil && err.Error() != "Invalid Register" {
+		t.Errorf("Expected 'Invalid Register' error, got '%v'", err.Error())
+	}
+
+	// Test invalid reg2
+	err = cpu.addReg(validReg, invalidReg)
+	if err == nil {
+		t.Errorf("Expected error for invalid reg2, got none")
+	}
+	if err != nil && err.Error() != "Invalid Register" {
+		t.Errorf("Expected 'Invalid Register' error, got '%v'", err.Error())
+	}
+}
+
+// TestAddRegIsolation verifies that performing an addition operation
+// does not accidentally alter the values of unrelated registers.
+func TestAddRegIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Fill all registers with distinct baseline values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	reg1 := uint16(0x2) // Initial: 20
+	reg2 := uint16(0x3) // Initial: 30
+
+	err := cpu.addReg(reg1, reg2)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify un-targeted registers maintained their baseline values
+	for i := 0; i < 16; i++ {
+		// Skip the target register and the VF flag (which was modified by the add logic)
+		if i == int(reg1) || i == 0xF {
+			continue 
+		}
+		
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Unrelated register %d was mutated: expected %d, got %d", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
