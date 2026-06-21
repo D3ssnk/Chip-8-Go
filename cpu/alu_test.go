@@ -1733,3 +1733,94 @@ func TestGetDelayTimerIsolation(t *testing.T) {
 		}
 	}
 }
+
+// TestWaitForKeyPressBasic verifies that waitForKeyPress (0xFx0A) correctly
+// stores the provided key value into the specified register.
+func TestWaitForKeyPressBasic(t *testing.T) {
+	cpu := NewCPU()
+
+	registerIndex := uint16(0x5)
+	pressedKey := uint16(0xA)
+
+	err := cpu.waitForKeyPress(registerIndex, pressedKey)
+	if err != nil {
+		t.Errorf("Expected no error on waitForKeyPress, got %v", err)
+	}
+
+	// Verify the register was updated with the key value
+	if cpu.registers[registerIndex] != uint8(pressedKey) {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", registerIndex, pressedKey, cpu.registers[registerIndex])
+	}
+}
+
+// TestWaitForKeyPressInvalidRegister verifies that waitForKeyPress returns an error
+// when the register index exceeds 0xF.
+func TestWaitForKeyPressInvalidRegister(t *testing.T) {
+	cpu := NewCPU()
+
+	invalidRegister := uint16(0x10)
+	validKey := uint16(0x5)
+
+	err := cpu.waitForKeyPress(invalidRegister, validKey)
+	if err == nil {
+		t.Errorf("Expected error for invalid register, got none")
+	}
+
+	if err.Error() != "Invalid Register" {
+		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
+	}
+}
+
+// TestWaitForKeyPressInvalidKey verifies that waitForKeyPress returns an error
+// when the key value exceeds the maximum valid keypad key (0xF).
+func TestWaitForKeyPressInvalidKey(t *testing.T) {
+	cpu := NewCPU()
+
+	validRegister := uint16(0x5)
+	invalidKey := uint16(0x10)
+
+	err := cpu.waitForKeyPress(validRegister, invalidKey)
+	if err == nil {
+		t.Errorf("Expected error for invalid key, got none")
+	}
+
+	if err.Error() != "Key press is out of bounds" {
+		t.Errorf("Expected error message 'Key press is out of bounds', got '%v'", err.Error())
+	}
+}
+
+// TestWaitForKeyPressIsolation verifies that storing the key press into
+// one register doesn't overwrite or affect the other registers.
+func TestWaitForKeyPressIsolation(t *testing.T) {
+	cpu := NewCPU()
+
+	// Initialize all registers with distinct values
+	for i := 0; i < 16; i++ {
+		cpu.registers[i] = uint8(i * 10)
+	}
+
+	targetRegister := uint16(0x7)
+	pressedKey := uint16(0xC)
+
+	err := cpu.waitForKeyPress(targetRegister, pressedKey)
+	if err != nil {
+		t.Errorf("Expected no error, got %v", err)
+	}
+
+	// Verify target was updated
+	if cpu.registers[targetRegister] != uint8(pressedKey) {
+		t.Errorf("Expected register[%d] to be 0x%X, got 0x%X", targetRegister, pressedKey, cpu.registers[targetRegister])
+	}
+
+	// Verify all other registers remain completely unchanged
+	for i := 0; i < 16; i++ {
+		if i == int(targetRegister) {
+			continue
+		}
+		
+		expectedValue := uint8(i * 10)
+		if cpu.registers[i] != expectedValue {
+			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
+		}
+	}
+}
