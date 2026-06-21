@@ -211,3 +211,13 @@ func (cpu *CPU) skipIfNotEqualReg(register1Index uint16, register2Index uint16) 
 
 	return nil
 }
+
+func (cpu *CPU) jumpV0(address uint16) error {
+	if uint16(cpu.registers[0x0]) + address > 0xFFF {
+		return errors.New("Address is out of bounds")
+	}
+
+	cpu.pc = uint16(cpu.registers[0x0]) + address
+
+	return nil
+}

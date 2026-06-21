@@ -362,3 +362,81 @@ func TestCallMultiple(t *testing.T) {
 		}
 	}
 }
+
+// TestJumpV0 verifies that jumpV0 (0xBnnn) correctly sets the program counter
+// to the specified address plus the value in register V0.
+func TestJumpV0(t *testing.T) {
+	cpu := NewCPU()
+
+	// Set V0 to a specific offset
+	cpu.registers[0x0] = 0x42
+	baseAddress := uint16(0x300)
+
+	// Execute jump V0
+	err := cpu.jumpV0(baseAddress)
+	if err != nil {
+		t.Errorf("Expected no error on jumpV0, got %v", err)
+	}
+
+	// Verify PC is set to base address + V0 (0x300 + 0x42 = 0x342)
+	expectedPC := uint16(0x342)
+	if cpu.pc != expectedPC {
+		t.Errorf("Expected PC to be 0x%X, got 0x%X", expectedPC, cpu.pc)
+	}
+}
+
+// TestJumpV0OutOfBounds verifies that jumpV0 returns an error when the combined
+// address (base + V0) exceeds the maximum valid memory address (0xFFF).
+func TestJumpV0OutOfBounds(t *testing.T) {
+	cpu := NewCPU()
+
+	originalPC := uint16(0x200)
+	cpu.pc = originalPC
+
+	// Set V0 to a high value
+	cpu.registers[0x0] = 0xFF
+	
+	// Base address + V0 will equal 0x1000, which is out of bounds
+	baseAddress := uint16(0x0F01) 
+
+	err := cpu.jumpV0(baseAddress)
+	if err == nil {
+		t.Errorf("Expected error when jumpV0 goes out of bounds, got none")
+	}
+
+	// Verify error message
+	if err.Error() != "Address is out of bounds" {
+		t.Errorf("Expected error message 'Address is out of bounds', got '%v'", err.Error())
+	}
+
+	// Verify PC was not changed
+	if cpu.pc != originalPC {
+		t.Errorf("Expected PC to remain 0x%X, got 0x%X", originalPC, cpu.pc)
+	}
+}
+
+// TestJumpV0EdgeCases verifies jumpV0 works correctly at the extreme edges
+// of memory boundaries and with zero values.
+func TestJumpV0EdgeCases(t *testing.T) {
+	cpu := NewCPU()
+
+	// Test absolute maximum valid boundary (V0 + base = 0xFFF)
+	cpu.registers[0x0] = 0xFF
+	err := cpu.jumpV0(0x0F00) // 0xF00 + 0xFF = 0xFFF
+	if err != nil {
+		t.Errorf("Expected no error jumping to maximum boundary 0xFFF, got %v", err)
+	}
+	if cpu.pc != 0xFFF {
+		t.Errorf("Expected PC to be 0xFFF, got 0x%X", cpu.pc)
+	}
+
+	// Test with V0 as 0
+	cpu.registers[0x0] = 0x00
+	err = cpu.jumpV0(0x400)
+	if err != nil {
+		t.Errorf("Expected no error when V0 is 0, got %v", err)
+	}
+	if cpu.pc != 0x400 {
+		t.Errorf("Expected PC to be 0x400, got 0x%X", cpu.pc)
+	}
+}
