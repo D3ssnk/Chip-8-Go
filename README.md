@@ -44,12 +44,3 @@ The core of the emulator revolves around the machine state, typically encapsulat
 
 The standard fetch-decode-execute cycle reads 16-bit opcodes from memory, decodes the instruction using bitwise masking, and routes execution to the appropriate handler.
 
-## Roadmap
-
-* Complete remaining opcode implementations.
-* Finalize display rendering and keyboard mapping.
-* Add unit tests for core CPU instructions and register operations.
-
-## License
-
-[MIT](https://www.google.com/search?q=LICENSE) *(Update if using a different license)*
