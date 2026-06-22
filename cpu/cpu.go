@@ -51,7 +51,7 @@ type CPU struct {
 	display [32][64]bool
 	// Keypad holds the state of the 16 hexadecimal input keys (0x0-0xF).
 	keypad [16]bool
-	// WaitngForKey is a bool that flags if 
+	// WaitngForKey is a bool that flags if
 	waitingForKey bool
 }
 
@@ -90,7 +90,6 @@ func (cpu *CPU) Fetch() (uint16, error) {
 	instruction |= uint16(cpu.memory[cpu.pc])
 	cpu.pc++
 
-
 	return instruction, nil
 }
 
@@ -98,11 +97,11 @@ func (cpu *CPU) GetDisplay() [32][64]bool {
 	return cpu.display
 }
 
-func (cpu *CPU) SetKeypad(index int, state bool)  {
+func (cpu *CPU) SetKeypad(index int, state bool) {
 	cpu.keypad[index] = state
 }
 
-func (cpu *CPU) SetWaitingForKeypad(state bool)  {
+func (cpu *CPU) SetWaitingForKeypad(state bool) {
 	cpu.waitingForKey = state
 }
 
@@ -110,23 +109,23 @@ func (cpu *CPU) GeWaitingForKeypad() bool {
 	return cpu.waitingForKey
 }
 
-func (cpu *CPU) DecrementDelayTimer()  {
-	cpu.delayTimer --
+func (cpu *CPU) DecrementDelayTimer() {
+	cpu.delayTimer--
 }
 
 func (cpu *CPU) GetDelayTimer() uint8 {
 	return cpu.delayTimer
 }
 
-func (cpu *CPU) DecrementSoundTimer()  {
-	cpu.soundTimer --
+func (cpu *CPU) DecrementSoundTimer() {
+	cpu.soundTimer--
 }
 
 func (cpu *CPU) GetSoundTimer() uint8 {
 	return cpu.soundTimer
 }
 
-func (cpu *CPU) ResetKeypad()  {
+func (cpu *CPU) ResetKeypad() {
 	cpu.keypad = [16]bool{}
 }
 
@@ -246,10 +245,10 @@ func (cpu *CPU) Execute(instruction uint16) error {
 		switch lastByte {
 		case 0x9E:
 			// 0xEx9E: Skip next instruction if key Vx is pressed
-			return cpu.skipIfKeyPressed(secondNibble)
+			return cpu.skipIfKeyPressed(uint16(cpu.registers[secondNibble]))
 		case 0xA1:
 			// 0xExA1: Skip next instruction if key Vx is not pressed
-			return cpu.skipIfKeyNotPressed(secondNibble)
+			return cpu.skipIfKeyNotPressed(uint16(cpu.registers[secondNibble]))
 		}
 
 	case 0xF:
@@ -263,7 +262,7 @@ func (cpu *CPU) Execute(instruction uint16) error {
 			// 0xFx0A: Wait for key press, store in Vx
 			key := uint16(0)
 			if cpu.keypad == [16]bool{} && cpu.waitingForKey {
-				cpu.waitingForKey = true 
+				cpu.waitingForKey = true
 				cpu.pc -= 2
 				return nil
 			}

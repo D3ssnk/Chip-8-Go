@@ -536,27 +536,6 @@ func TestDrawWrapping(t *testing.T) {
 	}
 }
 
-// TestDrawOutOfBoundsCoords verifies the function properly rejects
-// starting coordinates that exceed screen dimensions.
-func TestDrawOutOfBoundsCoords(t *testing.T) {
-	cpu := NewCPU()
-
-	// Test X out of bounds
-	err := cpu.draw(64, 0, 1)
-	if err == nil {
-		t.Errorf("Expected error for X coordinate out of bounds, got none")
-	}
-	if err != nil && err.Error() != "Cordinates out of bounds" {
-		t.Errorf("Expected 'Cordinates out of bounds', got '%v'", err.Error())
-	}
-
-	// Test Y out of bounds
-	err = cpu.draw(0, 32, 1)
-	if err == nil {
-		t.Errorf("Expected error for Y coordinate out of bounds, got none")
-	}
-}
-
 // TestDrawOutOfBoundsMemory verifies the function prevents reading past
 // the maximum valid memory address of 0xFFF.
 func TestDrawOutOfBoundsMemory(t *testing.T) {

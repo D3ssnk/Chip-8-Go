@@ -16,52 +16,39 @@ func (g *Game) checkKeypad() bool{
 	g.cpu.ResetKeypad()
 	if ebiten.IsKeyPressed(ebiten.KeyX) {
 		g.cpu.SetKeypad(0,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.Key1) {
+	} else if ebiten.IsKeyPressed(ebiten.Key1) {
 		g.cpu.SetKeypad(1,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.Key2) {
+	} else if ebiten.IsKeyPressed(ebiten.Key2) {
 		g.cpu.SetKeypad(2,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.Key3) {
+	} else if ebiten.IsKeyPressed(ebiten.Key3) {
 		g.cpu.SetKeypad(3,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyQ) {
 		g.cpu.SetKeypad(4,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyW) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyW) {
 		g.cpu.SetKeypad(5,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyE) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyE) {
 		g.cpu.SetKeypad(6,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyA) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyA) {
 		g.cpu.SetKeypad(7,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyS) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyS) {
 		g.cpu.SetKeypad(8,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyD) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyD) {
 		g.cpu.SetKeypad(9,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyZ) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyZ) {
 		g.cpu.SetKeypad(10,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyC) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyC) {
 		g.cpu.SetKeypad(11,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.Key4) {
+	} else if ebiten.IsKeyPressed(ebiten.Key4) {
 		g.cpu.SetKeypad(12,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyR) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyR) {
 		g.cpu.SetKeypad(13,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyF) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyF) {
 		g.cpu.SetKeypad(14,true)
-	} 
-	if ebiten.IsKeyPressed(ebiten.KeyV) {
+	} else if ebiten.IsKeyPressed(ebiten.KeyV) {
 		g.cpu.SetKeypad(15,true)
-	} else {
+	}
+
+	if g.cpu.GetKeypad() == [16]bool{} {
 		return false
 	}
 	return true
