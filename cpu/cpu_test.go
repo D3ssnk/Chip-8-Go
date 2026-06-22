@@ -17,7 +17,7 @@ func TestFetch(t *testing.T) {
 	cpu.memory[0x203] = 0x78 // Next instruction low byte
 
 	// Test: First fetch should return 0x1234 with no error
-	instruction, err := cpu.fetch()
+	instruction, err := cpu.Fetch()
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -31,7 +31,7 @@ func TestFetch(t *testing.T) {
 	}
 
 	// Test: Second fetch should return 0x5678 with no error
-	instruction, err = cpu.fetch()
+	instruction, err = cpu.Fetch()
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -54,7 +54,7 @@ func TestFetchEdgeCase(t *testing.T) {
 	cpu.memory[0x200] = 0x00
 	cpu.memory[0x201] = 0x00
 
-	instruction, err := cpu.fetch()
+	instruction, err := cpu.Fetch()
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -66,7 +66,7 @@ func TestFetchEdgeCase(t *testing.T) {
 	cpu.memory[0x202] = 0xFF
 	cpu.memory[0x203] = 0xFF
 
-	instruction, err = cpu.fetch()
+	instruction, err = cpu.Fetch()
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
@@ -83,7 +83,7 @@ func TestFetchBoundaryError(t *testing.T) {
 	// Set PC to a position that will exceed 0xFFF after fetching
 	cpu.pc = 0xFFF
 
-	instruction, err := cpu.fetch()
+	instruction, err := cpu.Fetch()
 	if err == nil {
 		t.Errorf("Expected error when PC exceeds memory, got none")
 	}

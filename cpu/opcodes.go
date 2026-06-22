@@ -265,9 +265,6 @@ func (cpu *CPU) randReg(registerIndex uint16, lastByte uint16) error {
 }
 
 func (cpu *CPU) draw(xcord uint16, ycord uint16, counter uint16) error {
-	if xcord >= 0x40 || ycord >= 0x20 {
-		return errors.New("Cordinates out of bounds")
-	}
 	if cpu.i+counter > 0xFFF {
 		return errors.New("Address out of bounds")
 	}
@@ -331,7 +328,7 @@ func (cpu *CPU) waitForKeyPress(registerIndex uint16,key uint16) error {
 	}
 
 	cpu.registers[registerIndex] = uint8(key)
-
+	
 	return nil
 }
 
