@@ -1,9 +1,8 @@
 package game
 
 import (
-	//"image/color"
-
 	"image/color"
+
 	"github.com/D3ssnk/Chip-8-Go/cpu"
 	"github.com/hajimehoshi/ebiten/v2"
 )
@@ -12,40 +11,55 @@ type Game struct {
 	cpu cpu.CPU
 }
 
-func (g *Game) checkKeypad() bool{
+func (g *Game) checkKeypad() bool {
 	g.cpu.ResetKeypad()
 	if ebiten.IsKeyPressed(ebiten.KeyX) {
-		g.cpu.SetKeypad(0,true)
-	} else if ebiten.IsKeyPressed(ebiten.Key1) {
-		g.cpu.SetKeypad(1,true)
-	} else if ebiten.IsKeyPressed(ebiten.Key2) {
-		g.cpu.SetKeypad(2,true)
-	} else if ebiten.IsKeyPressed(ebiten.Key3) {
-		g.cpu.SetKeypad(3,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyQ) {
-		g.cpu.SetKeypad(4,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyW) {
-		g.cpu.SetKeypad(5,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyE) {
-		g.cpu.SetKeypad(6,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyA) {
-		g.cpu.SetKeypad(7,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyS) {
-		g.cpu.SetKeypad(8,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyD) {
-		g.cpu.SetKeypad(9,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyZ) {
-		g.cpu.SetKeypad(10,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyC) {
-		g.cpu.SetKeypad(11,true)
-	} else if ebiten.IsKeyPressed(ebiten.Key4) {
-		g.cpu.SetKeypad(12,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyR) {
-		g.cpu.SetKeypad(13,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyF) {
-		g.cpu.SetKeypad(14,true)
-	} else if ebiten.IsKeyPressed(ebiten.KeyV) {
-		g.cpu.SetKeypad(15,true)
+		g.cpu.SetKeypad(0, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.Key1) {
+		g.cpu.SetKeypad(1, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.Key2) {
+		g.cpu.SetKeypad(2, true)
+	} 
+	if ebiten.IsKeyPressed(ebiten.Key3) {
+		g.cpu.SetKeypad(3, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyQ) {
+		g.cpu.SetKeypad(4, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyW) {
+		g.cpu.SetKeypad(5, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyE) {
+		g.cpu.SetKeypad(6, true)
+	} 
+	if ebiten.IsKeyPressed(ebiten.KeyA) {
+		g.cpu.SetKeypad(7, true)
+	} 
+	if ebiten.IsKeyPressed(ebiten.KeyS) {
+		g.cpu.SetKeypad(8, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyD) {
+		g.cpu.SetKeypad(9, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyZ) {
+		g.cpu.SetKeypad(10, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyC) {
+		g.cpu.SetKeypad(11, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.Key4) {
+		g.cpu.SetKeypad(12, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyR) {
+		g.cpu.SetKeypad(13, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyF) {
+		g.cpu.SetKeypad(14, true)
+	}  
+	if ebiten.IsKeyPressed(ebiten.KeyV) {
+		g.cpu.SetKeypad(15, true)
 	}
 
 	if g.cpu.GetKeypad() == [16]bool{} {
@@ -55,9 +69,24 @@ func (g *Game) checkKeypad() bool{
 }
 
 func (g *Game) Update() error {
-	keyWasPressed := g.checkKeypad()
-	if keyWasPressed && g.cpu.GeWaitingForKeypad() {
-		g.cpu.SetWaitingForKeypad(false)
+	for i := 0; i < 10; i++ {
+		keyWasPressed := g.checkKeypad()
+		if keyWasPressed && g.cpu.GeWaitingForKeypad() {
+			g.cpu.SetWaitingForKeypad(false)
+		}
+		if g.cpu.GeWaitingForKeypad() {
+			break
+		}
+
+		instruction, err := g.cpu.Fetch()
+		if err != nil {
+			return err
+		}
+
+		err = g.cpu.Execute(instruction)
+		if err != nil {
+			return err
+		}
 	}
 
 	if g.cpu.GetDelayTimer() > 0 {
@@ -68,16 +97,6 @@ func (g *Game) Update() error {
 		g.cpu.DecrementSoundTimer()
 	}
 
-	instruction, err := g.cpu.Fetch()
-	if err != nil {
-		return err
-	}
-
-	err = g.cpu.Execute(instruction)
-	if err != nil {
-		return err
-	}
-	
 	return nil
 }
 
@@ -99,7 +118,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			}
 			options.GeoM.Translate(10, 0)
 		}
-		options.GeoM.Translate(-640,10)
+		options.GeoM.Translate(-640, 10)
 	}
 }
 

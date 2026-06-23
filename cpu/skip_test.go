@@ -609,10 +609,10 @@ func TestSkipIfKeyPressedSkip(t *testing.T) {
 	cpu := NewCPU()
 
 	keyIndex := uint16(0xA)
-	
+
 	// Simulate the key being pressed
 	cpu.keypad[keyIndex] = true
-	
+
 	originalPC := cpu.pc
 
 	err := cpu.skipIfKeyPressed(keyIndex)
@@ -633,10 +633,10 @@ func TestSkipIfKeyPressedNoSkip(t *testing.T) {
 	cpu := NewCPU()
 
 	keyIndex := uint16(0x5)
-	
+
 	// Explicitly ensure the key is NOT pressed
 	cpu.keypad[keyIndex] = false
-	
+
 	originalPC := cpu.pc
 
 	err := cpu.skipIfKeyPressed(keyIndex)
@@ -682,7 +682,7 @@ func TestSkipIfKeyPressedIsolation(t *testing.T) {
 	cpu.keypad[0x2] = true
 	// Ensure key 0x3 is NOT pressed
 	cpu.keypad[0x3] = false
-	
+
 	originalPC := cpu.pc
 
 	// Check key 0x3 (which is adjacent to the pressed key 0x2)
@@ -703,10 +703,10 @@ func TestSkipIfKeyNotPressedSkip(t *testing.T) {
 	cpu := NewCPU()
 
 	keyIndex := uint16(0xA)
-	
+
 	// Ensure the key is NOT pressed
 	cpu.keypad[keyIndex] = false
-	
+
 	originalPC := cpu.pc
 
 	err := cpu.skipIfKeyNotPressed(keyIndex)
@@ -727,10 +727,10 @@ func TestSkipIfKeyNotPressedNoSkip(t *testing.T) {
 	cpu := NewCPU()
 
 	keyIndex := uint16(0x5)
-	
+
 	// Simulate the key being pressed
 	cpu.keypad[keyIndex] = true
-	
+
 	originalPC := cpu.pc
 
 	err := cpu.skipIfKeyNotPressed(keyIndex)
@@ -776,7 +776,7 @@ func TestSkipIfKeyNotPressedIsolation(t *testing.T) {
 	cpu.keypad[0x2] = true
 	// Ensure key 0x3 is NOT pressed
 	cpu.keypad[0x3] = false
-	
+
 	originalPC := cpu.pc
 
 	// Check key 0x2 (which IS pressed, so it should NOT skip)
