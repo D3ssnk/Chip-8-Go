@@ -5,10 +5,11 @@ A custom CHIP-8 emulator built entirely in Go. This project simulates the classi
 ## Demo
 
 #### Keypad Test
-https://github.com/user-attachments/assets/0d4911c7-a8c0-4788-85cd-8c59ffc3385d
+
+https://github.com/user-attachments/assets/099a2d63-78ed-4ac4-94ad-88a5749a330e
 
 #### Breakout
-https://github.com/user-attachments/assets/caabc610-ff38-4982-896f-7b062c359d97
+[https://github.com/user-attachments/assets/caabc610-ff38-4982-896f-7b062c359d97](https://github.com/user-attachments/assets/39a106bb-c86a-4457-9d66-1e1eb08ccfe8)
 
 #### IBM Logo
 <img width="752" height="464" alt="Screenshot 2026-06-23 at 11 20 31" src="https://github.com/user-attachments/assets/3a16ac3d-0023-44da-a26b-931c14f300cb" />
