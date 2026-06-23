@@ -51,7 +51,7 @@ type CPU struct {
 	display [32][64]bool
 	// Keypad holds the state of the 16 hexadecimal input keys (0x0-0xF).
 	keypad [16]bool
-	// WaitngForKey is a bool that flags if
+	// WaitngForKey is a bool that flags if the program is waiting for a key press.
 	waitingForKey bool
 }
 
@@ -319,6 +319,5 @@ func NewCPU() CPU {
 	copy(cpu.memory[:], font[:])
 	// Set the program counter to the standard CHIP-8 program start address.
 	cpu.pc = 0x200
-	cpu.waitingForKey = true
 	return cpu
 }

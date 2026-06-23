@@ -141,17 +141,15 @@ func (cpu *CPU) addReg(register1Index uint16, register2Index uint16) error {
 	if register1Index > 0xF || register2Index > 0xF {
 		return errors.New("Invalid Register")
 	}
-	
+
 	tmpVal := uint16(cpu.registers[register2Index]) + uint16(cpu.registers[register1Index])
 	cpu.registers[register1Index] = cpu.registers[register2Index] + cpu.registers[register1Index]
-	
+
 	if tmpVal > 0xFF {
 		cpu.registers[0xF] = 1
 	} else {
 		cpu.registers[0xF] = 0
 	}
-
-	
 
 	return nil
 }
@@ -319,7 +317,7 @@ func (cpu *CPU) getDelayTimer(registerIndex uint16) error {
 	return nil
 }
 
-func (cpu *CPU) waitForKeyPress(registerIndex uint16,key uint16) error {
+func (cpu *CPU) waitForKeyPress(registerIndex uint16, key uint16) error {
 	if key > 0xF {
 		return errors.New("Key press is out of bounds")
 	}
@@ -328,7 +326,7 @@ func (cpu *CPU) waitForKeyPress(registerIndex uint16,key uint16) error {
 	}
 
 	cpu.registers[registerIndex] = uint8(key)
-	
+
 	return nil
 }
 
@@ -337,7 +335,7 @@ func (cpu *CPU) setDelayTimer(registerIndex uint16) error {
 		return errors.New("Invalid Register")
 	}
 
-	cpu.delayTimer = cpu.registers[registerIndex] 
+	cpu.delayTimer = cpu.registers[registerIndex]
 
 	return nil
 }
@@ -347,7 +345,7 @@ func (cpu *CPU) setSoundTimer(registerIndex uint16) error {
 		return errors.New("Invalid Register")
 	}
 
-	cpu.soundTimer = cpu.registers[registerIndex] 
+	cpu.soundTimer = cpu.registers[registerIndex]
 
 	return nil
 }
@@ -356,7 +354,7 @@ func (cpu *CPU) addI(registerIndex uint16) error {
 	if registerIndex > 0xF {
 		return errors.New("Invalid Register")
 	}
-	if cpu.i + uint16(cpu.registers[registerIndex]) > 0xFFF {
+	if cpu.i+uint16(cpu.registers[registerIndex]) > 0xFFF {
 		return errors.New("Address out of bounds")
 	}
 
@@ -382,7 +380,7 @@ func (cpu *CPU) storeBCD(registerIndex uint16) error {
 	if registerIndex > 0xF {
 		return errors.New("Invalid Register")
 	}
-	if cpu.i > 0xFFF - 2 {
+	if cpu.i > 0xFFF-2 {
 		return errors.New("Address out of bounds")
 	}
 	registerValue := cpu.registers[registerIndex]
@@ -391,8 +389,8 @@ func (cpu *CPU) storeBCD(registerIndex uint16) error {
 	unitDigit := registerValue % 10
 
 	cpu.memory[cpu.i] = hundrethDigit
-	cpu.memory[cpu.i + 1] = tenthDigit
-	cpu.memory[cpu.i + 2] = unitDigit
+	cpu.memory[cpu.i+1] = tenthDigit
+	cpu.memory[cpu.i+2] = unitDigit
 
 	return nil
 }
@@ -401,13 +399,13 @@ func (cpu *CPU) storeRegisters(registerIndex uint16) error {
 	if registerIndex > 0xF {
 		return errors.New("Invalid Register")
 	}
-	if cpu.i > 0xFFF - registerIndex {
+	if cpu.i > 0xFFF-registerIndex {
 		return errors.New("Address out of bounds")
 	}
 
-	for i := uint16(0); i < registerIndex + 1; i++ {
+	for i := uint16(0); i < registerIndex+1; i++ {
 		cpu.memory[cpu.i] = cpu.registers[i]
-		cpu.i ++
+		cpu.i++
 	}
 
 	return nil
@@ -417,13 +415,13 @@ func (cpu *CPU) loadRegisters(registerIndex uint16) error {
 	if registerIndex > 0xF {
 		return errors.New("Invalid Register")
 	}
-	if cpu.i > 0xFFF - registerIndex {
+	if cpu.i > 0xFFF-registerIndex {
 		return errors.New("Address out of bounds")
 	}
 
-	for i := uint16(0); i < registerIndex + 1; i++ {
+	for i := uint16(0); i < registerIndex+1; i++ {
 		cpu.registers[i] = cpu.memory[cpu.i]
-		cpu.i ++
+		cpu.i++
 	}
 
 	return nil

@@ -730,12 +730,12 @@ func TestOrRegIsolation(t *testing.T) {
 		if i == 3 {
 			continue // Skip the destination register
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if i == 7 {
 			expectedValue = 0x02 // Source register maintains its specific value
 		}
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -911,12 +911,12 @@ func TestAndRegIsolation(t *testing.T) {
 		if i == 3 {
 			continue // Skip the destination register
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if i == 7 {
 			expectedValue = 0x55 // Source register maintains its specific value
 		}
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -972,7 +972,7 @@ func TestSubRegBorrow(t *testing.T) {
 	}
 
 	// Verify underflow math result (5 - 7 = 254 in uint8)
-	expectedValue := uint8(0xFE) 
+	expectedValue := uint8(0xFE)
 	if cpu.registers[register1] != expectedValue {
 		t.Errorf("Expected register[%d] to be 0xFE (underflow), got 0x%X", register1, cpu.registers[register1])
 	}
@@ -983,7 +983,7 @@ func TestSubRegBorrow(t *testing.T) {
 	}
 }
 
-// TestSubRegEqual verifies subtraction when Vx == Vy, 
+// TestSubRegEqual verifies subtraction when Vx == Vy,
 // expecting a result of 0 and VF set to 1 (no borrow).
 func TestSubRegEqual(t *testing.T) {
 	cpu := NewCPU()
@@ -1066,19 +1066,19 @@ func TestSubRegSameRegister(t *testing.T) {
 // is the destination register, the math result overwrites the flag calculation.
 func TestSubRegWithVFAsDestination(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	// Set VF as the destination (Vx)
 	destRegister := uint16(0xF)
 	sourceRegister := uint16(0x2)
-	
-	cpu.registers[destRegister] = 0x10 // 16
+
+	cpu.registers[destRegister] = 0x10   // 16
 	cpu.registers[sourceRegister] = 0x05 // 5
-	
+
 	err := cpu.subReg(destRegister, sourceRegister)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	
+
 	// VF should be overwritten by the mathematical result (0x10 - 0x05 = 0x0B)
 	// rather than storing the 'no borrow' flag of 1.
 	if cpu.registers[0xF] != 0x0B {
@@ -1109,11 +1109,11 @@ func TestSubRegIsolation(t *testing.T) {
 	// Verify all other registers remain unchanged
 	for i := 0; i < 15; i++ {
 		if i == 3 || i == 7 {
-			continue 
+			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -1177,7 +1177,7 @@ func TestShiftRightInvalidRegister(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error for invalid register, got none")
 	}
-	
+
 	if err.Error() != "Invalid Register" {
 		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
 	}
@@ -1187,23 +1187,23 @@ func TestShiftRightInvalidRegister(t *testing.T) {
 // the mathematical shifted result overwrites the LSB flag calculation.
 func TestShiftRightWithVFAsDestination(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	destRegister := uint16(0xF)
 	cpu.registers[destRegister] = 0x03 // Binary: 0000 0011 (LSB is 1)
-	
+
 	err := cpu.shiftRight(destRegister)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	
+
 	// VF should first be set to 1 (the LSB), but then immediately overwritten
 	// by the shifted result (0x03 >> 1 = 0x01).
 	// While the end result is coincidentally the same here (1), testing 0x05 ensures
 	// we see the math result (2) rather than just the flag (1).
-	
+
 	cpu.registers[destRegister] = 0x05 // Binary: 0000 0101 (LSB is 1)
 	cpu.shiftRight(destRegister)
-	
+
 	if cpu.registers[0xF] != 0x02 { // 0x05 >> 1 = 0x02
 		t.Errorf("Expected VF to be overwritten by math result 0x02, got 0x%X", cpu.registers[0xF])
 	}
@@ -1232,11 +1232,11 @@ func TestShiftRightIsolation(t *testing.T) {
 	// Verify all other registers remain unchanged
 	for i := 0; i < 15; i++ {
 		if i == int(targetRegister) {
-			continue 
+			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -1260,7 +1260,7 @@ func TestSubRegReverseNoBorrow(t *testing.T) {
 	}
 
 	// Verify math result (Vy - Vx = 16 - 5 = 11)
-	if cpu.registers[register1] != 0x0B { 
+	if cpu.registers[register1] != 0x0B {
 		t.Errorf("Expected register[%d] to be 0x0B, got 0x%X", register1, cpu.registers[register1])
 	}
 
@@ -1292,7 +1292,7 @@ func TestSubRegReverseBorrow(t *testing.T) {
 	}
 
 	// Verify underflow math result (5 - 7 = 254 in uint8)
-	expectedValue := uint8(0xFE) 
+	expectedValue := uint8(0xFE)
 	if cpu.registers[register1] != expectedValue {
 		t.Errorf("Expected register[%d] to be 0xFE (underflow), got 0x%X", register1, cpu.registers[register1])
 	}
@@ -1303,7 +1303,7 @@ func TestSubRegReverseBorrow(t *testing.T) {
 	}
 }
 
-// TestSubRegReverseEqual verifies subtraction when Vy == Vx, 
+// TestSubRegReverseEqual verifies subtraction when Vy == Vx,
 // expecting a result of 0 and VF set to 1 (no borrow).
 func TestSubRegReverseEqual(t *testing.T) {
 	cpu := NewCPU()
@@ -1386,20 +1386,20 @@ func TestSubRegReverseSameRegister(t *testing.T) {
 // is the destination register, the math result overwrites the flag calculation.
 func TestSubRegReverseWithVFAsDestination(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	// Set VF as the destination (Vx)
 	destRegister := uint16(0xF)
 	sourceRegister := uint16(0x2)
-	
+
 	cpu.registers[destRegister] = 0x05   // Vx (5)
 	cpu.registers[sourceRegister] = 0x10 // Vy (16)
-	
+
 	err := cpu.subRegReverse(destRegister, sourceRegister)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	
-	// VF should evaluate the flag (16 >= 5, so flag = 1), 
+
+	// VF should evaluate the flag (16 >= 5, so flag = 1),
 	// but then immediately be overwritten by the math result (16 - 5 = 11 / 0x0B).
 	if cpu.registers[0xF] != 0x0B {
 		t.Errorf("Expected VF to be overwritten by math result 0x0B, got 0x%X", cpu.registers[0xF])
@@ -1429,11 +1429,11 @@ func TestSubRegReverseIsolation(t *testing.T) {
 	// Verify all other registers remain unchanged
 	for i := 0; i < 15; i++ {
 		if i == 3 || i == 7 {
-			continue 
+			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -1497,7 +1497,7 @@ func TestShiftLeftInvalidRegister(t *testing.T) {
 	if err == nil {
 		t.Errorf("Expected error for invalid register, got none")
 	}
-	
+
 	if err.Error() != "Invalid Register" {
 		t.Errorf("Expected error message 'Invalid Register', got '%v'", err.Error())
 	}
@@ -1507,18 +1507,18 @@ func TestShiftLeftInvalidRegister(t *testing.T) {
 // the mathematical shifted result overwrites the MSB flag calculation.
 func TestShiftLeftWithVFAsDestination(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	destRegister := uint16(0xF)
 	cpu.registers[destRegister] = 0x82 // Binary: 1000 0010 (MSB is 1)
-	
+
 	err := cpu.shiftLeft(destRegister)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
 	}
-	
+
 	// VF should first be set to 1 (the MSB), but then immediately overwritten
 	// by the shifted result (0x82 << 1 = 0x04).
-	if cpu.registers[0xF] != 0x04 { 
+	if cpu.registers[0xF] != 0x04 {
 		t.Errorf("Expected VF to be overwritten by math result 0x04, got 0x%X", cpu.registers[0xF])
 	}
 }
@@ -1546,11 +1546,11 @@ func TestShiftLeftIsolation(t *testing.T) {
 	// Verify all other registers remain unchanged
 	for i := 0; i < 15; i++ {
 		if i == int(targetRegister) {
-			continue 
+			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
-		
+
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
@@ -1572,7 +1572,7 @@ func TestRandReg(t *testing.T) {
 		t.Errorf("Expected register[%d] to be 0x00 when ANDed with 0x00, got 0x%X", registerIndex, cpu.registers[registerIndex])
 	}
 
-	// Test 2: Specific mask (e.g., 0x0F). 
+	// Test 2: Specific mask (e.g., 0x0F).
 	// We run this multiple times to statistically ensure the bitwise AND is enforced.
 	mask := uint16(0x0F) // Binary: 0000 1111
 	for i := 0; i < 20; i++ {
@@ -1580,12 +1580,12 @@ func TestRandReg(t *testing.T) {
 		if err != nil {
 			t.Errorf("Iteration %d: Expected no error on randReg, got %v", i, err)
 		}
-		
+
 		// The result must never be larger than the mask
 		if cpu.registers[registerIndex] > uint8(mask) {
 			t.Errorf("Iteration %d: Expected register[%d] to be <= 0x0F, got 0x%X", i, registerIndex, cpu.registers[registerIndex])
 		}
-		
+
 		// Bitwise check to ensure absolutely no bits outside the mask were set
 		if (cpu.registers[registerIndex] & ^uint8(mask)) != 0 {
 			t.Errorf("Iteration %d: Bits outside mask were set, got 0x%X", i, cpu.registers[registerIndex])
@@ -1599,7 +1599,7 @@ func TestRandRegInvalidRegister(t *testing.T) {
 	cpu := NewCPU()
 
 	invalidRegister := uint16(0x10)
-	
+
 	err := cpu.randReg(invalidRegister, 0xFF)
 	if err == nil {
 		t.Errorf("Expected error for invalid register, got none")
@@ -1621,7 +1621,7 @@ func TestRandRegIsolation(t *testing.T) {
 	}
 
 	targetRegister := uint16(4)
-	
+
 	err := cpu.randReg(targetRegister, 0xFF)
 	if err != nil {
 		t.Errorf("Expected no error, got %v", err)
@@ -1632,7 +1632,7 @@ func TestRandRegIsolation(t *testing.T) {
 		if i == int(targetRegister) {
 			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
@@ -1647,7 +1647,7 @@ func TestGetDelayTimer(t *testing.T) {
 
 	registerIndex := uint16(0x5)
 	expectedTimerValue := uint8(0x3C) // 60
-	
+
 	// Set the delay timer to a specific value
 	cpu.delayTimer = expectedTimerValue
 
@@ -1726,7 +1726,7 @@ func TestGetDelayTimerIsolation(t *testing.T) {
 		if i == int(targetRegister) {
 			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
@@ -1817,7 +1817,7 @@ func TestWaitForKeyPressIsolation(t *testing.T) {
 		if i == int(targetRegister) {
 			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Register %d: Expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
@@ -1854,9 +1854,9 @@ func TestSetDelayTimerZero(t *testing.T) {
 
 	registerIndex := uint16(0x2)
 	cpu.registers[registerIndex] = 0x00
-	
+
 	// Pre-set timer to non-zero to ensure it actually changes
-	cpu.delayTimer = 0x42 
+	cpu.delayTimer = 0x42
 
 	err := cpu.setDelayTimer(registerIndex)
 	if err != nil {
@@ -1946,9 +1946,9 @@ func TestSetSoundTimerZero(t *testing.T) {
 
 	registerIndex := uint16(0x2)
 	cpu.registers[registerIndex] = 0x00
-	
+
 	// Pre-set timer to non-zero to ensure it actually changes
-	cpu.soundTimer = 0x42 
+	cpu.soundTimer = 0x42
 
 	err := cpu.setSoundTimer(registerIndex)
 	if err != nil {
@@ -2040,9 +2040,9 @@ func TestXorRegSelf(t *testing.T) {
 	cpu := NewCPU()
 
 	reg1 := uint16(0x5)
-	
+
 	// Any value XORed with itself is 0
-	cpu.registers[reg1] = 0x42 
+	cpu.registers[reg1] = 0x42
 
 	err := cpu.xorReg(reg1, reg1)
 	if err != nil {
@@ -2058,7 +2058,7 @@ func TestXorRegSelf(t *testing.T) {
 // to ensure it rejects registers outside the 0x0-0xF range.
 func TestXorRegInvalidRegisters(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	validReg := uint16(0x5)
 	invalidReg := uint16(0x10) // 16 is out of bounds
 
@@ -2104,13 +2104,14 @@ func TestXorRegIsolation(t *testing.T) {
 		if i == int(reg1) || i == int(reg2) {
 			continue // Skip the ones we intentionally interacted with
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Unrelated register %d was mutated: expected 0x%X, got 0x%X", i, expectedValue, cpu.registers[i])
 		}
 	}
 }
+
 // TestAddRegNoCarry verifies that addReg (0x8xy4) correctly adds two registers
 // when the result is <= 255, and sets the carry flag (VF) to 0.
 func TestAddRegNoCarry(t *testing.T) {
@@ -2121,7 +2122,7 @@ func TestAddRegNoCarry(t *testing.T) {
 
 	cpu.registers[reg1] = 100
 	cpu.registers[reg2] = 50
-	
+
 	// Pre-set VF to 1 to ensure it gets cleared to 0
 	cpu.registers[0xF] = 1
 
@@ -2148,7 +2149,7 @@ func TestAddRegCarry(t *testing.T) {
 
 	cpu.registers[reg1] = 200
 	cpu.registers[reg2] = 100
-	
+
 	// Pre-set VF to 0 to ensure it gets set to 1
 	cpu.registers[0xF] = 0
 
@@ -2195,7 +2196,7 @@ func TestAddRegTargetingVF(t *testing.T) {
 // to ensure it rejects registers outside the 0x0-0xF range.
 func TestAddRegInvalidRegisters(t *testing.T) {
 	cpu := NewCPU()
-	
+
 	validReg := uint16(0x5)
 	invalidReg := uint16(0x10) // Out of bounds
 
@@ -2240,9 +2241,9 @@ func TestAddRegIsolation(t *testing.T) {
 	for i := 0; i < 16; i++ {
 		// Skip the target register and the VF flag (which was modified by the add logic)
 		if i == int(reg1) || i == 0xF {
-			continue 
+			continue
 		}
-		
+
 		expectedValue := uint8(i * 10)
 		if cpu.registers[i] != expectedValue {
 			t.Errorf("Unrelated register %d was mutated: expected %d, got %d", i, expectedValue, cpu.registers[i])

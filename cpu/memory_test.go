@@ -80,7 +80,7 @@ func TestAddI(t *testing.T) {
 
 	cpu.i = uint16(0x200)
 	registerIndex := uint16(0x5)
-	
+
 	// Set Vx to 0x42
 	cpu.registers[registerIndex] = 0x42
 
@@ -120,11 +120,11 @@ func TestAddIOutOfBounds(t *testing.T) {
 
 	originalI := uint16(0xF00)
 	cpu.i = originalI
-	
+
 	registerIndex := uint16(0x2)
 	// 0xF00 + 0xFF = 0xFFF (valid), but 0xF00 + 0x100 would be 0x1000 (invalid)
 	// Since registers are uint8, max is 0xFF. Let's start I even higher.
-	
+
 	cpu.i = uint16(0xFF0)
 	cpu.registers[registerIndex] = 0x20 // 0xFF0 + 0x20 = 0x1010 (Out of bounds)
 
@@ -143,7 +143,7 @@ func TestAddIOutOfBounds(t *testing.T) {
 	}
 }
 
-// TestAddIEdgeCases verifies addI correctly handles adding zero 
+// TestAddIEdgeCases verifies addI correctly handles adding zero
 // and reaching the exact maximum memory boundary (0xFFF).
 func TestAddIEdgeCases(t *testing.T) {
 	cpu := NewCPU()
@@ -153,7 +153,7 @@ func TestAddIEdgeCases(t *testing.T) {
 	// Test adding 0
 	cpu.i = uint16(0x300)
 	cpu.registers[registerIndex] = 0x00
-	
+
 	err := cpu.addI(registerIndex)
 	if err != nil {
 		t.Errorf("Expected no error when adding 0, got %v", err)
@@ -165,7 +165,7 @@ func TestAddIEdgeCases(t *testing.T) {
 	// Test reaching exact maximum boundary (0xFFF)
 	cpu.i = uint16(0xF00)
 	cpu.registers[registerIndex] = 0xFF
-	
+
 	err = cpu.addI(registerIndex)
 	if err != nil {
 		t.Errorf("Expected no error when reaching 0xFFF boundary, got %v", err)
@@ -254,7 +254,7 @@ func TestSetIToFontEdgeCases(t *testing.T) {
 	if err != nil {
 		t.Errorf("Expected no error for font F, got %v", err)
 	}
-	
+
 	expectedI := uint16(15 * 5) // 75 (0x4B)
 	if cpu.i != expectedI {
 		t.Errorf("Expected I register to be 0x%X for font F, got 0x%X", expectedI, cpu.i)
@@ -288,9 +288,9 @@ func TestStoreBCD(t *testing.T) {
 
 	cpu.i = uint16(0x300)
 	registerIndex := uint16(0x5)
-	
+
 	// 234 -> Hundreds: 2, Tens: 3, Units: 4
-	cpu.registers[registerIndex] = 234 
+	cpu.registers[registerIndex] = 234
 
 	err := cpu.storeBCD(registerIndex)
 	if err != nil {
@@ -323,7 +323,7 @@ func TestStoreBCDEdgeCases(t *testing.T) {
 		t.Errorf("Expected no error for BCD 0, got %v", err)
 	}
 	if cpu.memory[cpu.i] != 0 || cpu.memory[cpu.i+1] != 0 || cpu.memory[cpu.i+2] != 0 {
-		t.Errorf("Expected memory to hold [0, 0, 0], got [%d, %d, %d]", 
+		t.Errorf("Expected memory to hold [0, 0, 0], got [%d, %d, %d]",
 			cpu.memory[cpu.i], cpu.memory[cpu.i+1], cpu.memory[cpu.i+2])
 	}
 
@@ -334,7 +334,7 @@ func TestStoreBCDEdgeCases(t *testing.T) {
 		t.Errorf("Expected no error for BCD 255, got %v", err)
 	}
 	if cpu.memory[cpu.i] != 2 || cpu.memory[cpu.i+1] != 5 || cpu.memory[cpu.i+2] != 5 {
-		t.Errorf("Expected memory to hold [2, 5, 5], got [%d, %d, %d]", 
+		t.Errorf("Expected memory to hold [2, 5, 5], got [%d, %d, %d]",
 			cpu.memory[cpu.i], cpu.memory[cpu.i+1], cpu.memory[cpu.i+2])
 	}
 }
@@ -362,9 +362,9 @@ func TestStoreBCDOutOfBoundsMemory(t *testing.T) {
 	cpu := NewCPU()
 	registerIndex := uint16(0x0)
 	cpu.registers[registerIndex] = 123
-	
+
 	// Position I so that I+2 equals 0x1000 (which is out of bounds)
-	cpu.i = uint16(0xFFE) 
+	cpu.i = uint16(0xFFE)
 
 	err := cpu.storeBCD(registerIndex)
 	if err == nil {
@@ -383,7 +383,7 @@ func TestStoreRegisters(t *testing.T) {
 
 	cpu.i = uint16(0x300)
 	registerIndex := uint16(0x2) // Store V0, V1, V2
-	
+
 	cpu.registers[0] = 0xAA
 	cpu.registers[1] = 0xBB
 	cpu.registers[2] = 0xCC
@@ -434,10 +434,10 @@ func TestStoreRegistersOutOfBoundsMemory(t *testing.T) {
 	cpu := NewCPU()
 
 	registerIndex := uint16(0xF) // Writing 16 bytes (V0-VF)
-	
+
 	// Position I dangerously close to the end of memory
 	// 0xFFF - 0xF = 0xFF0. If we start at 0xFF1, it will overflow.
-	cpu.i = uint16(0xFF1) 
+	cpu.i = uint16(0xFF1)
 
 	err := cpu.storeRegisters(registerIndex)
 	if err == nil {
@@ -456,7 +456,7 @@ func TestStoreRegistersIsolation(t *testing.T) {
 
 	cpu.i = uint16(0x400)
 	registerIndex := uint16(0x3)
-	
+
 	// Pre-fill registers
 	for idx := 0; idx < 16; idx++ {
 		cpu.registers[idx] = uint8(idx * 10)
@@ -483,7 +483,7 @@ func TestLoadRegisters(t *testing.T) {
 
 	cpu.i = uint16(0x300)
 	registerIndex := uint16(0x2) // Load into V0, V1, V2
-	
+
 	// Pre-fill memory
 	cpu.memory[0x300] = 0xAA
 	cpu.memory[0x301] = 0xBB
@@ -535,9 +535,9 @@ func TestLoadRegistersOutOfBoundsMemory(t *testing.T) {
 	cpu := NewCPU()
 
 	registerIndex := uint16(0xF) // Reading 16 bytes (V0-VF)
-	
+
 	// Position I dangerously close to the end of memory
-	cpu.i = uint16(0xFF1) 
+	cpu.i = uint16(0xFF1)
 
 	err := cpu.loadRegisters(registerIndex)
 	if err == nil {
@@ -556,10 +556,10 @@ func TestLoadRegistersIsolation(t *testing.T) {
 
 	cpu.i = uint16(0x400)
 	registerIndex := uint16(0x3) // Only load V0, V1, V2, V3
-	
+
 	// Set baseline values for all registers so we can detect unintended mutation
 	for idx := 0; idx < 16; idx++ {
-		cpu.registers[idx] = 0x00 
+		cpu.registers[idx] = 0x00
 		cpu.memory[0x400+idx] = 0xFF // Memory holds all 0xFF
 	}
 

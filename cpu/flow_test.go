@@ -396,9 +396,9 @@ func TestJumpV0OutOfBounds(t *testing.T) {
 
 	// Set V0 to a high value
 	cpu.registers[0x0] = 0xFF
-	
+
 	// Base address + V0 will equal 0x1000, which is out of bounds
-	baseAddress := uint16(0x0F01) 
+	baseAddress := uint16(0x0F01)
 
 	err := cpu.jumpV0(baseAddress)
 	if err == nil {
@@ -450,7 +450,7 @@ func TestDrawBasic(t *testing.T) {
 	// Set up memory with a 1-byte sprite: 0xC0 (Binary: 1100 0000)
 	cpu.i = 0x300
 	cpu.memory[cpu.i] = 0xC0
-	
+
 	// Pre-set VF to 1 to ensure the draw function resets it to 0
 	cpu.registers[0xF] = 1
 
@@ -543,7 +543,7 @@ func TestDrawOutOfBoundsMemory(t *testing.T) {
 
 	// Position the index register at the very end of memory
 	cpu.i = 0xFFF
-	
+
 	// Try to draw 2 bytes (which would require reading 0x1000)
 	err := cpu.draw(0, 0, 2)
 	if err == nil {
