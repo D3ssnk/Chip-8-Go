@@ -7,10 +7,15 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 )
 
+// Game defines the Ebiten application structure, holding an instance of the CHIP-8 CPU.
 type Game struct {
 	cpu cpu.CPU
 }
 
+// checkKeypad maps standard Ebiten keyboard inputs to the classic CHIP-8 16-key keypad layout.
+// It resets the CPU keypad array on each call, then iterates through mapped keys (1-4, Q-R, A-F, Z-V),
+// updating the CPU's internal keypad state if any are pressed.
+// Returns true if at least one mapped key is currently depressed.
 func (g *Game) checkKeypad() bool {
 	g.cpu.ResetKeypad()
 	if ebiten.IsKeyPressed(ebiten.KeyX) {
@@ -68,6 +73,8 @@ func (g *Game) checkKeypad() bool {
 	return true
 }
 
+// Update acts as the central game loop, executing 10 CPU instructions per frame to simulate an appropriate clock speed.
+// It halts execution if the CPU is waiting for user input and handles the 60Hz decrementing of delay and sound timers.
 func (g *Game) Update() error {
 	for i := 0; i < 10; i++ {
 		keyWasPressed := g.checkKeypad()
@@ -100,6 +107,9 @@ func (g *Game) Update() error {
 	return nil
 }
 
+// Draw renders the internal CHIP-8 64x32 boolean display matrix to the Ebiten screen window.
+// It iterates through the display array, drawing 10x10 white pixels for active true bits,
+// and 10x10 pink pixels for inactive false bits, translating the geometry matrix accordingly.
 func (g *Game) Draw(screen *ebiten.Image) {
 	var pinkPixel *ebiten.Image = ebiten.NewImage(10, 10)
 	var whitePixel *ebiten.Image = ebiten.NewImage(10, 10)
@@ -122,10 +132,14 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 }
 
+// Layout dictates the rendering resolution of the application window.
+// Given the CHIP-8's native 64x32 resolution and the 10x10 pixel scaling implemented in Draw,
+// the layout dimensions are hardcoded to 640x320.
 func (g *Game) Layout(outsideWidth, outsideHeight int) (screenWidth, screenHeight int) {
 	return 640, 320
 }
 
+// InitGame acts as a constructor, injecting an instantiated CPU object into the newly created Game struct.
 func InitGame(cpu cpu.CPU) Game {
 	var game Game
 	game.cpu = cpu
